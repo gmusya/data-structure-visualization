@@ -21,6 +21,7 @@ public:
     [[nodiscard]] bool Empty() const;
     void Print(std::ostream& os) const;
     [[nodiscard]] std::string Str() const;
+    ~RedBlackTree();
 
 #ifdef INVARIANTS_CHECK
     [[nodiscard]] bool CheckInvariants() const;
@@ -37,6 +38,7 @@ private:
         Kid WhichKid(std::shared_ptr<Node> kid);
         static void RotateLeft(std::shared_ptr<Node> d);
         static void RotateRight(std::shared_ptr<Node> b);
+        static void Unlink(std::shared_ptr<Node> node);
 
 #ifdef INVARIANTS_CHECK
         static void CheckInvariants(std::shared_ptr<Node> node, std::vector<T>& values, std::vector<int32_t>& depths, int32_t black_depth);
@@ -141,6 +143,11 @@ std::string RedBlackTree<T>::Str() const {
     std::stringstream ss;
     Print(ss);
     return ss.str();
+}
+
+template<typename T>
+RedBlackTree<T>::~RedBlackTree() {
+    Node::Unlink(root_);
 }
 
 template<typename T>
@@ -277,6 +284,18 @@ void RedBlackTree<T>::Node::RotateRight(std::shared_ptr<Node> b) {
         }
     }
 }
+template<typename T>
+void RedBlackTree<T>::Node::Unlink(std::shared_ptr<Node> node) {
+    if (!node) {
+        return;
+    }
+    Unlink(node->left);
+    Unlink(node->right);
+    node->left = nullptr;
+    node->right = nullptr;
+    node->parent = nullptr;
+}
+
 #ifdef INVARIANTS_CHECK
 template<typename T>
 bool RedBlackTree<T>::CheckInvariants() const {
