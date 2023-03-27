@@ -28,6 +28,10 @@ int main() {
             }
             std::cout.flush();
             std::cout << rb_tree.Str();
+        } else if (query_type == "size") {
+            std::cout << rb_tree.Size() << "\n";
+        } else if (query_type == "is_empty") {
+            std::cout << std::boolalpha << rb_tree.Empty() << "\n";
         } else if (query_type == "break") {
             break;
         }

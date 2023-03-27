@@ -56,17 +56,22 @@ TEST(Invariants, RandomTestsInsertErase) {
         std::uniform_int_distribution<> coin(1, 2);
         std::stringstream ss;
         RedBlackTree<int32_t> rb_tree;
+        std::set<int32_t> s;
         for (int node = 1; node <= 1000; ++node) {
             if (coin(rnd) == 1) {
                 int32_t value = uid(rnd);
                 rb_tree.Insert(value);
+                s.insert(value);
                 ss << "insert " << value << "\n";
             } else {
                 int32_t value = uid(rnd);
                 rb_tree.Erase(value);
+                s.erase(value);
                 ss << "erase " << value << "\n";
             }
             ASSERT_TRUE(rb_tree.CheckInvariants());
+            ASSERT_TRUE(s.size() == rb_tree.Size());
+            ASSERT_TRUE(s.empty() == rb_tree.Empty());
         }
     }
 }
