@@ -33,6 +33,8 @@ TEST(Correctness, RandomTestsInsertErase) {
                 ss << "erase " << value << "\n";
             }
             ASSERT_TRUE(Values(s) == rb_tree.Values());
+            ASSERT_TRUE(s.size() == rb_tree.Size());
+            ASSERT_TRUE(s.empty() == rb_tree.Empty());
         }
     }
 }

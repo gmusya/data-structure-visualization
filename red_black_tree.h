@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cassert>
 #include <memory>
 #include <sstream>
 #include <vector>
@@ -54,8 +55,12 @@ private:
         enum Color color;
     };
 
+    std::shared_ptr<Node> SearchValue(const T& value);
+    void UpdateRoot();
+
     std::shared_ptr<Node> root_;
     size_t size_;
+    std::shared_ptr<Node> GetNearestLeaf(std::shared_ptr<Node> node);
 };
 
 template<typename T>
@@ -63,7 +68,6 @@ RedBlackTree<T>::RedBlackTree() {
     root_ = nullptr;
     size_ = 0;
 }
-
 
 template<typename T>
 bool RedBlackTree<T>::Insert(const T& value) {
@@ -132,12 +136,16 @@ bool RedBlackTree<T>::Insert(const T& value) {
 }
 
 template<typename T>
-bool RedBlackTree<T>::Erase(const T& value) {
-    if (!root_) {
-        return false;
+void RedBlackTree<T>::UpdateRoot() {
+    while (root_ && root_->parent) {
+        root_ = root_->parent;
     }
+}
+
+template<typename T>
+std::shared_ptr<typename RedBlackTree<T>::Node> RedBlackTree<T>::SearchValue(const T& value) {
     std::shared_ptr<Node> node = root_;
-    while (true) {
+    while (node) {
         if (value < node->value) {
             node = node->left;
         } else if (value == node->value) {
@@ -145,35 +153,41 @@ bool RedBlackTree<T>::Erase(const T& value) {
         } else {
             node = node->right;
         }
-        if (!node) {
-            return false;
+    }
+    return node;
+}
+
+template<typename T>
+std::shared_ptr<typename RedBlackTree<T>::Node> RedBlackTree<T>::GetNearestLeaf(std::shared_ptr<Node> node) {
+    std::shared_ptr<Node> node_to_delete = node->right;
+    if (node_to_delete) {
+        while (node_to_delete->left) {
+            node_to_delete = node_to_delete->left;
         }
+    } else {
+        if (node->left) {
+            node_to_delete = node->left;
+            while (node_to_delete->right) {
+                node_to_delete = node_to_delete->right;
+            }
+        }
+    }
+    return node_to_delete;
+}
+
+template<typename T>
+bool RedBlackTree<T>::Erase(const T& value) {
+    std::shared_ptr<Node> node = SearchValue(value);
+    if (!node) {
+        return false;
     }
     --size_;
-    {
-        std::shared_ptr<Node> node_to_delete = node->right;
-        if (node_to_delete) {
-            while (node_to_delete->left) {
-                node_to_delete = node_to_delete->left;
-            }
-            node->value = node_to_delete->value;
-            node = node_to_delete;
-        } else {
-            if (node->left) {
-                node_to_delete = node->left;
-                while (node_to_delete->right) {
-                    node_to_delete = node_to_delete->right;
-                }
-                node->value = node_to_delete->value;
-                node = node_to_delete;
-            }
-        }
+    if (std::shared_ptr<Node> node_to_delete = GetNearestLeaf(node)) {
+        node->value = node_to_delete->value;
+        node = node_to_delete;
     }
     if (!node->parent) {
-        root_ = node->right;
-        if (root_) {
-            root_->color = Color::BLACK;
-        }
+        root_ = nullptr;
         return true;
     }
     Kid kid = node->parent->WhichKid(node);
@@ -200,9 +214,7 @@ bool RedBlackTree<T>::Erase(const T& value) {
                 sibling->color = Color::BLACK;
                 (kid == Kid::LEFT ? Node::RotateLeft(sibling) : Node::RotateRight(sibling));
                 sibling = (kid == Kid::LEFT ? parent->right : parent->left);
-                while (root_->parent) {
-                    root_ = root_->parent;
-                }
+                UpdateRoot();
             }
             if (parent->color == Color::BLACK && (!sibling->left || sibling->left->color == Color::BLACK) &&
                 (!sibling->right || sibling->right->color == Color::BLACK)) {
@@ -237,9 +249,7 @@ bool RedBlackTree<T>::Erase(const T& value) {
             parent->color = Color::BLACK;
             (kid == Kid::LEFT ? sibling->right : sibling->left)->color = Color::BLACK;
             parent->parent->color = color;
-            while (root_->parent) {
-                root_ = root_->parent;
-            }
+            UpdateRoot();
             return true;
         }
         if (!node->parent) {
@@ -263,9 +273,7 @@ bool RedBlackTree<T>::Erase(const T& value) {
             (!sibling->right || sibling->right->color == Color::BLACK)) {
             node->parent->color = Color::BLACK;
             sibling->color = Color::RED;
-            while (root_->parent) {
-                root_ = root_->parent;
-            }
+            UpdateRoot();
             return true;
         }
         if ((kid == Kid::LEFT && Node::Color(sibling->left) == Color::RED && Node::Color(sibling->right) == Color::BLACK) ||
@@ -288,9 +296,7 @@ bool RedBlackTree<T>::Erase(const T& value) {
         node->parent->color = Color::BLACK;
         (kid == Kid::LEFT ? sibling->right : sibling->left)->color = Color::BLACK;
         node->parent->parent->color = color;
-        while (root_->parent) {
-            root_ = root_->parent;
-        }
+        UpdateRoot();
         return true;
     }
 }
@@ -510,9 +516,6 @@ bool RedBlackTree<T>::CheckInvariants() const {
         if (values[i] > values[i + 1]) {
             return false;
         }
-    }
-    if (values.size() == 9) {
-        return true;
     }
     return *std::max_element(depths.begin(), depths.end()) == *std::min_element(depths.begin(), depths.end());
 }
