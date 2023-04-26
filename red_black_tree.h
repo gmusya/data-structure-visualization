@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cassert>
 #include <memory>
 #include <sstream>
 #include <vector>
@@ -8,11 +9,13 @@
 #include <vector>
 #endif
 
+enum Color { RED, BLACK };
 enum Kid { LEFT, RIGHT };
 
 template<typename T>
 class RedBlackTree {
 public:
+    RedBlackTree();
     bool Erase(const T& value);
     bool Insert(const T& value);
     [[nodiscard]] size_t Size() const;
@@ -30,12 +33,12 @@ private:
     class Node {
     public:
         explicit Node(const T& value1);
-        Node(const T& value1, std::shared_ptr<Node> parent1, char color1);
+        Node(const T& value1, std::shared_ptr<Node> parent1, enum Color color1);
         void Print(std::ostream& os, int depth) const;
         std::shared_ptr<Node> GetGrandParent();
         std::shared_ptr<Node> GetUncle();
         Kid WhichKid(std::shared_ptr<Node> kid);
-        static char Color(std::shared_ptr<Node> node);
+        static enum Color Color(std::shared_ptr<Node> node);
         static void RotateLeft(std::shared_ptr<Node> d);
         static void RotateRight(std::shared_ptr<Node> b);
         static void Unlink(std::shared_ptr<Node> node);
@@ -49,18 +52,28 @@ private:
         std::shared_ptr<Node> left;
         std::shared_ptr<Node> right;
         T value;
-        char color;
+        enum Color color;
     };
+
+    std::shared_ptr<Node> SearchValue(const T& value);
+    void UpdateRoot();
 
     std::shared_ptr<Node> root_;
     size_t size_;
+    std::shared_ptr<Node> GetNearestLeaf(std::shared_ptr<Node> node);
 };
 
+template<typename T>
+RedBlackTree<T>::RedBlackTree() {
+    root_ = nullptr;
+    size_ = 0;
+}
 
 template<typename T>
 bool RedBlackTree<T>::Insert(const T& value) {
     if (!root_) {
         root_ = std::make_shared<Node>(value);
+        ++size_;
         return true;
     }
     std::shared_ptr<Node> node = root_;
@@ -75,17 +88,20 @@ bool RedBlackTree<T>::Insert(const T& value) {
             node = node->right;
         }
     }
-    node = std::make_shared<Node>(value, parent, 'r');
+    ++size_;
+    node = std::make_shared<Node>(value, parent, Color::RED);
     (value < parent->value ? parent->left : parent->right) = node;
     while (true) {
-        if (!parent || parent->color == 'b') {
-            if (!parent) { node->color = 'b'; }
+        if (!parent || parent->color == Color::BLACK) {
+            if (!parent) {
+                node->color = Color::BLACK;
+            }
             return true;
         }
-        if (node->GetUncle() && node->GetUncle()->color == 'r') {
-            node->GetUncle()->color = 'b';
-            node->parent->color = 'b';
-            node->parent->parent->color = 'r';
+        if (node->GetUncle() && node->GetUncle()->color == Color::RED) {
+            node->GetUncle()->color = Color::BLACK;
+            node->parent->color = Color::BLACK;
+            node->parent->parent->color = Color::RED;
             node = node->parent->parent;
             parent = node->parent;
         } else {
@@ -98,9 +114,11 @@ bool RedBlackTree<T>::Insert(const T& value) {
             node = node->left;
         }
         Node::RotateRight(node->parent);
-        node->parent->color = 'b';
-        node->parent->right->color = 'r';
-        if (!node->parent->parent) { root_ = node->parent; }
+        node->parent->color = Color::BLACK;
+        node->parent->right->color = Color::RED;
+        if (!node->parent->parent) {
+            root_ = node->parent;
+        }
         return true;
     } else {
         if (node->parent->WhichKid(node) == Kid::LEFT) {
@@ -108,18 +126,26 @@ bool RedBlackTree<T>::Insert(const T& value) {
             node = node->right;
         }
         Node::RotateLeft(node->parent);
-        node->parent->color = 'b';
-        node->parent->left->color = 'r';
-        if (!node->parent->parent) { root_ = node->parent; }
+        node->parent->color = Color::BLACK;
+        node->parent->left->color = Color::RED;
+        if (!node->parent->parent) {
+            root_ = node->parent;
+        }
         return true;
     }
 }
 
 template<typename T>
-bool RedBlackTree<T>::Erase(const T& value) {
-    if (!root_) { return false; }
+void RedBlackTree<T>::UpdateRoot() {
+    while (root_ && root_->parent) {
+        root_ = root_->parent;
+    }
+}
+
+template<typename T>
+std::shared_ptr<typename RedBlackTree<T>::Node> RedBlackTree<T>::SearchValue(const T& value) {
     std::shared_ptr<Node> node = root_;
-    while (true) {
+    while (node) {
         if (value < node->value) {
             node = node->left;
         } else if (value == node->value) {
@@ -127,32 +153,49 @@ bool RedBlackTree<T>::Erase(const T& value) {
         } else {
             node = node->right;
         }
-        if (!node) { return false; }
     }
-    {
-        std::shared_ptr<Node> node_to_delete = node->right;
-        if (node_to_delete) {
-            while (node_to_delete->left) { node_to_delete = node_to_delete->left; }
-            node->value = node_to_delete->value;
-            node = node_to_delete;
-        } else {
-            if (node->left) {
-                node_to_delete = node->left;
-                while (node_to_delete->right) { node_to_delete = node_to_delete->right; }
-                node->value = node_to_delete->value;
-                node = node_to_delete;
+    return node;
+}
+
+template<typename T>
+std::shared_ptr<typename RedBlackTree<T>::Node> RedBlackTree<T>::GetNearestLeaf(std::shared_ptr<Node> node) {
+    std::shared_ptr<Node> node_to_delete = node->right;
+    if (node_to_delete) {
+        while (node_to_delete->left) {
+            node_to_delete = node_to_delete->left;
+        }
+    } else {
+        if (node->left) {
+            node_to_delete = node->left;
+            while (node_to_delete->right) {
+                node_to_delete = node_to_delete->right;
             }
         }
     }
+    return node_to_delete;
+}
+
+template<typename T>
+bool RedBlackTree<T>::Erase(const T& value) {
+    std::shared_ptr<Node> node = SearchValue(value);
+    if (!node) {
+        return false;
+    }
+    --size_;
+    if (std::shared_ptr<Node> node_to_delete = GetNearestLeaf(node)) {
+        node->value = node_to_delete->value;
+        node = node_to_delete;
+    }
     if (!node->parent) {
-        root_ = node->right;
-        if (root_) { root_->color = 'b'; }
+        root_ = nullptr;
         return true;
     }
     Kid kid = node->parent->WhichKid(node);
     (kid == Kid::LEFT ? node->parent->left : node->parent->right) = node->right;
-    if (node->right) { node->right->parent = node->parent; }
-    if (node->color == 'r') {
+    if (node->right) {
+        node->right->parent = node->parent;
+    }
+    if (node->color == Color::RED) {
         node->right = node->left = node->parent = nullptr;
         return true;
     }
@@ -166,92 +209,94 @@ bool RedBlackTree<T>::Erase(const T& value) {
         if (!node) {
             kid = parent->WhichKid(node);
             std::shared_ptr<Node> sibling = (kid == Kid::LEFT ? parent->right : parent->left);
-            if (sibling->color == 'r') {
-                parent->color = 'r';
-                sibling->color = 'b';
+            if (sibling->color == Color::RED) {
+                parent->color = Color::RED;
+                sibling->color = Color::BLACK;
                 (kid == Kid::LEFT ? Node::RotateLeft(sibling) : Node::RotateRight(sibling));
                 sibling = (kid == Kid::LEFT ? parent->right : parent->left);
-                while (root_->parent) { root_ = root_->parent; }
+                UpdateRoot();
             }
-            if (parent->color == 'b' && (!sibling->left || sibling->left->color == 'b') &&
-                (!sibling->right || sibling->right->color == 'b')) {
-                sibling->color = 'r';
+            if (parent->color == Color::BLACK && (!sibling->left || sibling->left->color == Color::BLACK) &&
+                (!sibling->right || sibling->right->color == Color::BLACK)) {
+                sibling->color = Color::RED;
                 node = parent;
                 parent = node->parent;
                 continue;
             }
-            if (parent->color == 'r' && (!sibling->left || sibling->left->color == 'b') &&
-                (!sibling->right || sibling->right->color == 'b')) {
-                parent->color = 'b';
-                sibling->color = 'r';
+            if (parent->color == Color::RED && (!sibling->left || sibling->left->color == Color::BLACK) &&
+                (!sibling->right || sibling->right->color == Color::BLACK)) {
+                parent->color = Color::BLACK;
+                sibling->color = Color::RED;
                 return true;
             }
-            if ((kid == Kid::LEFT && Node::Color(sibling->left) == 'r' && Node::Color(sibling->right) == 'b') ||
-                (kid == Kid::RIGHT && Node::Color(sibling->left) == 'b' && Node::Color(sibling->right) == 'r')) {
+            if ((kid == Kid::LEFT && Node::Color(sibling->left) == Color::RED && Node::Color(sibling->right) == Color::BLACK) ||
+                (kid == Kid::RIGHT && Node::Color(sibling->left) == Color::BLACK && Node::Color(sibling->right) == Color::RED)) {
                 if (kid == Kid::LEFT) {
                     Node::RotateRight(sibling->left);
                 } else {
                     Node::RotateLeft(sibling->right);
                 }
-                sibling->color = 'r';
-                sibling->parent->color = 'b';
+                sibling->color = Color::RED;
+                sibling->parent->color = Color::BLACK;
                 sibling = sibling->parent;
             }
-            char color = parent->color;
+            enum Color color = parent->color;
             if (kid == Kid::LEFT) {
                 Node::RotateLeft(sibling);
             } else {
                 Node::RotateRight(sibling);
             }
-            parent->color = 'b';
-            (kid == Kid::LEFT ? sibling->right : sibling->left)->color = 'b';
+            parent->color = Color::BLACK;
+            (kid == Kid::LEFT ? sibling->right : sibling->left)->color = Color::BLACK;
             parent->parent->color = color;
-            while (root_->parent) { root_ = root_->parent; }
+            UpdateRoot();
             return true;
         }
-        if (!node->parent) { return true; }
+        if (!node->parent) {
+            return true;
+        }
         kid = node->parent->WhichKid(node);
         std::shared_ptr<Node> sibling = (kid == Kid::LEFT ? node->parent->right : node->parent->left);
-        if (sibling->color == 'r') {
-            node->parent->color = 'r';
-            sibling->color = 'b';
+        if (sibling->color == Color::RED) {
+            node->parent->color = Color::RED;
+            sibling->color = Color::BLACK;
             (kid == Kid::LEFT ? Node::RotateLeft(sibling) : Node::RotateRight(sibling));
             sibling = (kid == Kid::LEFT ? node->parent->right : node->parent->left);
         }
-        if (node->parent->color == 'b' && (!sibling->left || sibling->left->color == 'b') &&
-            (!sibling->right || sibling->right->color == 'b')) {
-            sibling->color = 'r';
+        if (node->parent->color == Color::BLACK && (!sibling->left || sibling->left->color == Color::BLACK) &&
+            (!sibling->right || sibling->right->color == Color::BLACK)) {
+            sibling->color = Color::RED;
             node = node->parent;
             continue;
         }
-        if (node->parent->color == 'r' && (!sibling->left || sibling->left->color == 'b') &&
-            (!sibling->right || sibling->right->color == 'b')) {
-            node->parent->color = 'b';
-            sibling->color = 'r';
-            while (root_->parent) { root_ = root_->parent; }
+        if (node->parent->color == Color::RED && (!sibling->left || sibling->left->color == Color::BLACK) &&
+            (!sibling->right || sibling->right->color == Color::BLACK)) {
+            node->parent->color = Color::BLACK;
+            sibling->color = Color::RED;
+            UpdateRoot();
             return true;
         }
-        if ((kid == Kid::LEFT && Node::Color(sibling->left) == 'r' && Node::Color(sibling->right) == 'b') ||
-            (kid == Kid::RIGHT && Node::Color(sibling->left) == 'b' && Node::Color(sibling->right) == 'r')) {
+        if ((kid == Kid::LEFT && Node::Color(sibling->left) == Color::RED && Node::Color(sibling->right) == Color::BLACK) ||
+            (kid == Kid::RIGHT && Node::Color(sibling->left) == Color::BLACK && Node::Color(sibling->right) == Color::RED)) {
             if (kid == Kid::LEFT) {
                 Node::RotateRight(sibling->left);
             } else {
                 Node::RotateLeft(sibling->right);
             }
-            sibling->color = 'r';
-            sibling->parent->color = 'b';
+            sibling->color = Color::RED;
+            sibling->parent->color = Color::BLACK;
             sibling = sibling->parent;
         }
-        char color = node->parent->color;
+        enum Color color = node->parent->color;
         if (kid == Kid::LEFT) {
             Node::RotateLeft(sibling);
         } else {
             Node::RotateRight(sibling);
         }
-        node->parent->color = 'b';
-        (kid == Kid::LEFT ? sibling->right : sibling->left)->color = 'b';
+        node->parent->color = Color::BLACK;
+        (kid == Kid::LEFT ? sibling->right : sibling->left)->color = Color::BLACK;
         node->parent->parent->color = color;
-        while (root_->parent) { root_ = root_->parent; }
+        UpdateRoot();
         return true;
     }
 }
@@ -274,6 +319,7 @@ void RedBlackTree<T>::Print(std::ostream& os) const {
     }
     root_->Print(os, 0);
 }
+
 template<typename T>
 std::string RedBlackTree<T>::Str() const {
     std::stringstream ss;
@@ -299,11 +345,11 @@ RedBlackTree<T>::Node::Node(const T& value1) {
     left = nullptr;
     right = nullptr;
     value = value1;
-    color = 'b';
+    color = Color::BLACK;
 }
 
 template<typename T>
-RedBlackTree<T>::Node::Node(const T& value1, std::shared_ptr<Node> parent1, char color1) {
+RedBlackTree<T>::Node::Node(const T& value1, std::shared_ptr<Node> parent1, enum Color color1) {
     parent = parent1;
     left = nullptr;
     right = nullptr;
@@ -316,7 +362,7 @@ void PrintLines(std::ostream& os, int32_t depth);
 template<typename T>
 void RedBlackTree<T>::Node::Print(std::ostream& os, int32_t depth) const {
     PrintLines(os, depth);
-    os << "(" << value << ", " << color << ")\n";
+    os << "(" << value << ", " << (color == Color::RED ? 'r' : 'b') << ")\n";
     if (left) {
         left->Print(os, depth + 1);
     } else {
@@ -341,8 +387,12 @@ std::shared_ptr<typename RedBlackTree<T>::Node> RedBlackTree<T>::Node::GetGrandP
 
 template<typename T>
 std::shared_ptr<typename RedBlackTree<T>::Node> RedBlackTree<T>::Node::GetUncle() {
-    if (!parent) { return nullptr; }
-    if (!(parent->parent)) { return nullptr; }
+    if (!parent) {
+        return nullptr;
+    }
+    if (!(parent->parent)) {
+        return nullptr;
+    }
     return (parent->parent->right == parent ? parent->parent->left : parent->parent->right);
 }
 
@@ -354,7 +404,6 @@ Kid RedBlackTree<T>::Node::WhichKid(std::shared_ptr<Node> kid) {
         return Kid::RIGHT;
     }
 }
-
 
 /*
        pp                                pp
@@ -371,10 +420,14 @@ void RedBlackTree<T>::Node::RotateLeft(std::shared_ptr<Node> d) {
     std::shared_ptr<Node> c = d->left;
     std::shared_ptr<Node> pp = b->parent;
     Kid kid;
-    if (pp) { kid = pp->WhichKid(b); }
+    if (pp) {
+        kid = pp->WhichKid(b);
+    }
     b->parent = d;
     b->right = c;
-    if (c) { c->parent = b; }
+    if (c) {
+        c->parent = b;
+    }
     d->left = b;
     d->parent = pp;
     if (pp) {
@@ -401,10 +454,14 @@ void RedBlackTree<T>::Node::RotateRight(std::shared_ptr<Node> b) {
     std::shared_ptr<Node> c = b->right;
     std::shared_ptr<Node> pp = d->parent;
     Kid kid;
-    if (pp) { kid = pp->WhichKid(d); }
+    if (pp) {
+        kid = pp->WhichKid(d);
+    }
     d->parent = b;
     d->left = c;
-    if (c) { c->parent = d; }
+    if (c) {
+        c->parent = d;
+    }
     b->right = d;
     b->parent = pp;
     if (pp) {
@@ -417,7 +474,9 @@ void RedBlackTree<T>::Node::RotateRight(std::shared_ptr<Node> b) {
 }
 template<typename T>
 void RedBlackTree<T>::Node::Unlink(std::shared_ptr<Node> node) {
-    if (!node) { return; }
+    if (!node) {
+        return;
+    }
     Unlink(node->left);
     Unlink(node->right);
     node->left = nullptr;
@@ -426,14 +485,18 @@ void RedBlackTree<T>::Node::Unlink(std::shared_ptr<Node> node) {
 }
 
 template<typename T>
-char RedBlackTree<T>::Node::Color(std::shared_ptr<Node> node) {
-    if (!node) { return 'b'; }
+enum Color RedBlackTree<T>::Node::Color(std::shared_ptr<Node> node) {
+    if (!node) {
+        return Color::BLACK;
+    }
     return node->color;
 }
 
 template<typename T>
 void RedBlackTree<T>::Node::Values(std::shared_ptr<Node> node, std::vector<T>& values) {
-    if (!node) { return; }
+    if (!node) {
+        return;
+    }
     Values(node->left, values);
     values.push_back(node->value);
     Values(node->right, values);
@@ -446,11 +509,14 @@ bool RedBlackTree<T>::CheckInvariants() const {
     std::vector<int32_t> depths;
     try {
         Node::CheckInvariants(root_, values, depths, 0);
-    } catch (std::runtime_error&) { return false; }
-    for (size_t i = 0; i + 1 < values.size(); ++i) {
-        if (values[i] > values[i + 1]) { return false; }
+    } catch (std::runtime_error&) {
+        return false;
     }
-    if (values.size() == 9) { return true; }
+    for (size_t i = 0; i + 1 < values.size(); ++i) {
+        if (values[i] > values[i + 1]) {
+            return false;
+        }
+    }
     return *std::max_element(depths.begin(), depths.end()) == *std::min_element(depths.begin(), depths.end());
 }
 
@@ -461,11 +527,13 @@ void RedBlackTree<T>::Node::CheckInvariants(std::shared_ptr<Node> node, std::vec
         depths.push_back(black_depth + 1);
         return;
     }
-    if (black_depth == 0 && node->color == 'r') { throw std::runtime_error("Root must be black"); }
-    if (node->color == 'b') {
+    if (black_depth == 0 && node->color == Color::RED) {
+        throw std::runtime_error("Root must be black");
+    }
+    if (node->color == Color::BLACK) {
         ++black_depth;
     } else {
-        if ((node->left && node->left->color == 'r') || (node->right && node->right->color == 'r')) {
+        if ((node->left && node->left->color == Color::RED) || (node->right && node->right->color == Color::RED)) {
             throw std::runtime_error("Red node cannot have red kid");
         }
     }

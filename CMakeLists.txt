@@ -6,7 +6,12 @@ set(CMAKE_CXX_STANDARD 20)
 
 add_subdirectory(lib/googletest)
 include_directories(lib/googletest/googletest/include)
-add_executable(tests tests/tests.cpp red_black_tree.cpp tests/test_invariants.cpp tests/test_correctness.cpp)
+add_executable(tests
+        red_black_tree.cpp
+        tests/test_invariants.cpp
+        tests/test_correctness.cpp
+        tests/test_insert.cpp
+        tests/test_erase.cpp)
 add_executable(test_performance tests/test_performance.cpp)
 target_link_libraries(tests gtest gtest_main)
 target_link_libraries(test_performance gtest gtest_main)
