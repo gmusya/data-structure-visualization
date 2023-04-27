@@ -14,17 +14,47 @@
    <string>MainWindow</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <widget class="QPushButton" name="pushButton">
+   <widget class="QWidget" name="horizontalLayoutWidget">
     <property name="geometry">
      <rect>
-      <x>210</x>
-      <y>240</y>
-      <width>191</width>
-      <height>31</height>
+      <x>0</x>
+      <y>489</y>
+      <width>791</width>
+      <height>72</height>
      </rect>
     </property>
-    <property name="text">
-     <string>Кликни на меня</string>
+    <layout class="QHBoxLayout" name="horizontalLayout">
+     <item>
+      <widget class="QPushButton" name="clear_button">
+       <property name="text">
+        <string>Сброс</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="doubling_button">
+       <property name="text">
+        <string>Удвоение</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="increment_button">
+       <property name="text">
+        <string>Инкремент</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+   <widget class="QGraphicsView" name="graphics_view">
+    <property name="geometry">
+     <rect>
+      <x>250</x>
+      <y>120</y>
+      <width>256</width>
+      <height>192</height>
+     </rect>
     </property>
    </widget>
   </widget>

@@ -2,6 +2,8 @@
 
 #include <QApplication>
 #include <QLabel>
+#include <QGraphicsScene>
+#include <QGraphicsView>
 
 int main(int argc, char *argv[])
 {
