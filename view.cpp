@@ -64,7 +64,6 @@ namespace DSVisualization {
     void View::DoStuff() {
         PRINT_WHERE_AM_I();
         mainLayout = new QGridLayout;
-        label = new QLabel;
         auto* button1 = new QPushButton("Insert");
         auto* button2 = new QPushButton("Erase");
         auto* button3 = new QPushButton("Find (not implemented)");
@@ -72,8 +71,11 @@ namespace DSVisualization {
         addressText2 = new QLineEdit;
         addressText3 = new QLineEdit;
         auto tree_scene = new QGraphicsScene();
+        q_painter = new QPainter;
+        auto q_window = new QWindow;
+        q_painter->setWindow(0, 0, 540, 500);
         tree_view = new QGraphicsView(tree_scene);
-        tree_view->setSceneRect(0, 0, 540, 500);
+        // tree_view->setSceneRect(0, 0, 540, 500);
         mainLayout->addWidget(tree_view, 0, 0, -1, -1);
         mainLayout->addWidget(addressText1, 1, 0);
         mainLayout->addWidget(addressText2, 1, 1);
@@ -97,17 +99,18 @@ namespace DSVisualization {
     }
 
 
-    std::shared_ptr<DrawableNode> DrawCurrentNode(const TreeInfo<int>& tree_info,
-                                                  std::shared_ptr<RedBlackTree<int>::Node> node,
-                                                  int depth, int& counter) {
+    std::shared_ptr<DrawableNode>
+    View::DrawCurrentNode(const TreeInfo<int>& tree_info,
+                          std::shared_ptr<RedBlackTree<int>::Node> node, int depth, int& counter) {
         if (!node) {
             return nullptr;
         }
+
         std::shared_ptr<DrawableNode> result =
                 std::make_shared<DrawableNode>(DrawableNode{0, 0, 0, BLACK, nullptr, nullptr});
         result->left = DrawCurrentNode(tree_info, node->left, depth + 1, counter);
-        result->x = counter;
-        result->y = depth;
+        result->x = counter * width + (counter - 1) * radius;
+        result->y = depth * radius + height;
         result->key = node->value;
         result->color = node->color;
         counter++;
@@ -140,18 +143,41 @@ namespace DSVisualization {
     }
 
     void View::RecursiveDraw(std::shared_ptr<DrawableNode> node) {
-        static int width = 5;
-        static int radius = 15;
+
         if (!node) {
             return;
         }
         RecursiveDraw(node->left);
-        std::cerr << node->x << ", " << node->y << ", " << radius << std::endl;
+        if (node->left) {
+            int x1 = node->x;
+            int y1 = node->y;
+            int x2 = node->left->x;
+            int y2 = node->left->y;
+            auto* it = new QGraphicsLineItem(x1 + radius / 2, y1 + radius / 2, x2 + radius / 2,
+                                             y2 + radius / 2);
+            tree_view->scene()->addItem(it);
+        }
         QPen pen;
         pen.setBrush(node->color == Color::RED ? Qt::red : Qt::black);
-        tree_view->scene()->addEllipse(node->x * width + (node->x - 1) * radius,
-                                        node->y * radius, radius, radius, pen);
+        tree_view->scene()->addEllipse(node->x, node->y, radius, radius, pen);
+        auto* text = new QGraphicsTextItem(std::to_string(node->key).c_str());
+        auto rect = text->boundingRect();
+        std::cerr << node->x << ' ' << node->y << std::endl;
+        std::cerr << rect.x() << ' ' << rect.y() << ' ' << rect.width() << ' ' << rect.height()
+                  << std::endl;
+        text->setPos(node->x - rect.width() / 2 + radius / 2,
+                     node->y - rect.height() / 2 + radius / 2);
+        tree_view->scene()->addItem(text);
         RecursiveDraw(node->right);
+        if (node->right) {
+            int x1 = node->x;
+            int y1 = node->y;
+            int x2 = node->right->x;
+            int y2 = node->right->y;
+            auto* it = new QGraphicsLineItem(x1 + radius / 2, y1 + radius / 2, x2 + radius / 2,
+                                             y2 + radius / 2);
+            tree_view->scene()->addItem(it);
+        }
     }
 
 

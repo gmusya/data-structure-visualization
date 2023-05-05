@@ -52,14 +52,20 @@ namespace DSVisualization {
 
         void Draw(std::shared_ptr<DrawableNode> node);
         void RecursiveDraw(std::shared_ptr<DrawableNode> node);
+        std::shared_ptr<DrawableNode> DrawCurrentNode(const TreeInfo<int>& tree_info,
+                                                      std::shared_ptr<RedBlackTree<int>::Node> node,
+                                                      int depth, int& counter);
     private:
+        int width = 5;
+        int radius = 50;
+        int height = 3;
         QGridLayout* mainLayout;
         QLineEdit* addressText1;
         QLineEdit* addressText2;
         QLineEdit* addressText3;
-        QLabel* label;
-        QPainter* painter;
         QGraphicsView* tree_view;
+        QPainter* q_painter;
+        QPaintDeviceWindow* q;
         QGraphicsScene scene;
         ObserverModelViewPtr observer_model_view;
         ObservableViewControllerPtr observable_view_controller;
