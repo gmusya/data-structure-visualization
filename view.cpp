@@ -71,10 +71,10 @@ namespace DSVisualization {
         addressText1 = new QLineEdit;
         addressText2 = new QLineEdit;
         addressText3 = new QLineEdit;
-        auto scene2 = new QGraphicsScene();
-        auto view2 = new QGraphicsView(scene2);
-        view2->setSceneRect(0, 0, 540, 500);
-        mainLayout->addWidget(label, 0, 0, -1, -1);
+        auto tree_scene = new QGraphicsScene();
+        tree_view = new QGraphicsView(tree_scene);
+        tree_view->setSceneRect(0, 0, 540, 500);
+        mainLayout->addWidget(tree_view, 0, 0, -1, -1);
         mainLayout->addWidget(addressText1, 1, 0);
         mainLayout->addWidget(addressText2, 1, 1);
         mainLayout->addWidget(addressText3, 1, 2);
@@ -96,9 +96,31 @@ namespace DSVisualization {
         return observer_model_view;
     }
 
+
+    std::shared_ptr<DrawableNode> DrawCurrentNode(const TreeInfo<int>& tree_info,
+                                                  std::shared_ptr<RedBlackTree<int>::Node> node,
+                                                  int depth, int& counter) {
+        if (!node) {
+            return nullptr;
+        }
+        std::shared_ptr<DrawableNode> result =
+                std::make_shared<DrawableNode>(DrawableNode{0, 0, 0, BLACK, nullptr, nullptr});
+        result->left = DrawCurrentNode(tree_info, node->left, depth + 1, counter);
+        result->x = counter;
+        result->y = depth;
+        result->key = node->value;
+        result->color = node->color;
+        counter++;
+        result->right = DrawCurrentNode(tree_info, node->right, depth + 1, counter);
+        return result;
+    }
+
     void View::OnNotifyFromModel(const DataModelView& value) {
         PRINT_WHERE_AM_I();
-        label->setText(value.c_str());
+        int counter = 0;
+        std::shared_ptr<DrawableNode> result = DrawCurrentNode(value, value.root, 0, counter);
+        Draw(result);
+        // label->setText(std::to_string(value.node_to_info.size()).c_str());
     }
 
     void View::SubscribeFromController(ObserverViewControllerPtr observer_view_controller) {
@@ -110,5 +132,27 @@ namespace DSVisualization {
         PRINT_WHERE_AM_I();
         observable_view_controller->Unsubscribe(std::move(observer_view_controller));
     }
+
+    void View::Draw(std::shared_ptr<DrawableNode> node) {
+        tree_view->scene()->clear();
+        RecursiveDraw(node);
+        tree_view->show();
+    }
+
+    void View::RecursiveDraw(std::shared_ptr<DrawableNode> node) {
+        static int width = 5;
+        static int radius = 15;
+        if (!node) {
+            return;
+        }
+        RecursiveDraw(node->left);
+        std::cerr << node->x << ", " << node->y << ", " << radius << std::endl;
+        QPen pen;
+        pen.setBrush(node->color == Color::RED ? Qt::red : Qt::black);
+        tree_view->scene()->addEllipse(node->x * width + (node->x - 1) * radius,
+                                        node->y * radius, radius, radius, pen);
+        RecursiveDraw(node->right);
+    }
+
 
 }// namespace DSVisualization
