@@ -5,6 +5,8 @@
 #include <set>
 #include <vector>
 
+#include "red_black_tree.h"
+
 namespace DSVisualization {
     template<typename Data>
     class Observable;
@@ -12,7 +14,7 @@ namespace DSVisualization {
     template<typename Data>
     class Observer;
 
-    using DataModelView = std::set<int>;
+    using DataModelView = std::string;
     using ObservableModelViewPtr = std::shared_ptr<Observable<DataModelView>>;
     using ObserverModelViewPtr = std::shared_ptr<Observer<DataModelView>>;
 
@@ -27,7 +29,7 @@ namespace DSVisualization {
         void Erase(int value);
 
     private:
-        std::set<int> values;
+        RedBlackTree<int> values;
         ObservableModelViewPtr observable_model_view;
     };
 }// namespace DSVisualization

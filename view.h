@@ -18,7 +18,7 @@ namespace DSVisualization {
     template<typename Data>
     class Observable;
 
-    using DataModelView = std::set<int>;
+    using DataModelView = std::string;
     using ObservableModelViewPtr = std::shared_ptr<Observable<DataModelView>>;
     using ObserverModelViewPtr = std::shared_ptr<Observer<DataModelView>>;
 

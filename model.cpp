@@ -13,14 +13,14 @@ namespace DSVisualization {
 
     void Model::Insert(int value) {
         PRINT_WHERE_AM_I();
-        values.insert(value);
-        observable_model_view->Notify(values);
+        values.Insert(value);
+        observable_model_view->Notify(values.Str());
     }
 
     void Model::Erase(int value) {
         PRINT_WHERE_AM_I();
-        values.erase(value);
-        observable_model_view->Notify(values);
+        values.Erase(value);
+        observable_model_view->Notify(values.Str());
     }
 
 
@@ -30,11 +30,11 @@ namespace DSVisualization {
 
     void Model::SubscribeFromView(ObserverModelViewPtr observer) {
         PRINT_WHERE_AM_I();
-        observable_model_view->Subscribe(std::move(observer), values);
+        observable_model_view->Subscribe(std::move(observer));
     }
 
     void Model::UnsubscribeFromView(ObserverModelViewPtr view) {
         PRINT_WHERE_AM_I();
-        observable_model_view->Unsubscribe(std::move(view), values);
+        observable_model_view->Unsubscribe(std::move(view));
     }
 }// namespace DSVisualization

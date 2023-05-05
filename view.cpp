@@ -98,11 +98,7 @@ namespace DSVisualization {
 
     void View::OnNotifyFromModel(const DataModelView& value) {
         PRINT_WHERE_AM_I();
-        std::stringstream os;
-        for (auto& now : value) {
-            os << now << ' ';
-        }
-        label->setText(os.str().c_str());
+        label->setText(value.c_str());
     }
 
     void View::SubscribeFromController(ObserverViewControllerPtr observer_view_controller) {
