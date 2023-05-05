@@ -1,6 +1,11 @@
-#include <iostream>
+#include "application.h"
+#include "utility.h"
+#include <QApplication>
 
-int main() {
-	std::cout << "Hello, World!" << std::endl;
-	return 0;
+int main(int argc, char* argv[]) {
+    QApplication q_app(argc, argv);
+    Application app;
+    app.Run();
+    PRINT_WHERE_AM_I();
+    return 0;
 }
