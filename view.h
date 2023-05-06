@@ -28,8 +28,8 @@ namespace DSVisualization {
     using ObserverViewControllerPtr = std::shared_ptr<Observer<DataViewController>>;
 
     struct DrawableNode {
-        int x;
-        int y;
+        float x;
+        float y;
         int key;
         Color color;
         std::shared_ptr<DrawableNode> left;
@@ -67,6 +67,7 @@ namespace DSVisualization {
         QPainter* q_painter;
         QPaintDeviceWindow* q;
         QGraphicsScene scene;
+        float max_x = 0;
         ObserverModelViewPtr observer_model_view;
         ObservableViewControllerPtr observable_view_controller;
 

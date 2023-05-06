@@ -109,7 +109,8 @@ namespace DSVisualization {
         std::shared_ptr<DrawableNode> result =
                 std::make_shared<DrawableNode>(DrawableNode{0, 0, 0, BLACK, nullptr, nullptr});
         result->left = DrawCurrentNode(tree_info, node->left, depth + 1, counter);
-        result->x = counter * width + (counter - 1) * radius;
+        result->x = counter * width + counter * radius;
+        max_x = std::max(result->x, max_x);
         result->y = depth * radius + height;
         result->key = node->value;
         result->color = node->color;
@@ -121,6 +122,7 @@ namespace DSVisualization {
     void View::OnNotifyFromModel(const DataModelView& value) {
         PRINT_WHERE_AM_I();
         int counter = 0;
+        max_x = 0;
         std::shared_ptr<DrawableNode> result = DrawCurrentNode(value, value.root, 0, counter);
         Draw(result);
         // label->setText(std::to_string(value.node_to_info.size()).c_str());
@@ -147,26 +149,38 @@ namespace DSVisualization {
         if (!node) {
             return;
         }
+        double r = radius;
+        if (max_x >= 800) {
+            node->x = node->x / max_x * 800;
+            r = radius / max_x * 800;
+        }
         RecursiveDraw(node->left);
         if (node->left) {
             int x1 = node->x;
             int y1 = node->y;
             int x2 = node->left->x;
             int y2 = node->left->y;
-            auto* it = new QGraphicsLineItem(x1 + radius / 2, y1 + radius / 2, x2 + radius / 2,
-                                             y2 + radius / 2);
-            tree_view->scene()->addItem(it);
+            auto* it = new QGraphicsLineItem(x1 + r / 2, y1 + r / 2, x2 + r / 2,
+                                             y2 + r / 2);
+            // tree_view->scene()->addItem(it);
+            auto* it1 = new QGraphicsLineItem(x1, y1 + r / 2, x2 + r / 2,
+                                             y1 + r / 2);
+            tree_view->scene()->addItem(it1);
+
+            auto* it2 = new QGraphicsLineItem(x2 + r / 2, y1 + r / 2, x2 + r / 2,
+                                              y2);
+            tree_view->scene()->addItem(it2);
         }
         QPen pen;
         pen.setBrush(node->color == Color::RED ? Qt::red : Qt::black);
-        tree_view->scene()->addEllipse(node->x, node->y, radius, radius, pen);
+        tree_view->scene()->addEllipse(node->x, node->y, r, r, pen);
         auto* text = new QGraphicsTextItem(std::to_string(node->key).c_str());
         auto rect = text->boundingRect();
         std::cerr << node->x << ' ' << node->y << std::endl;
         std::cerr << rect.x() << ' ' << rect.y() << ' ' << rect.width() << ' ' << rect.height()
                   << std::endl;
-        text->setPos(node->x - rect.width() / 2 + radius / 2,
-                     node->y - rect.height() / 2 + radius / 2);
+        text->setPos(node->x - rect.width() / 2 + r / 2,
+                     node->y - rect.height() / 2 + r / 2);
         tree_view->scene()->addItem(text);
         RecursiveDraw(node->right);
         if (node->right) {
@@ -174,9 +188,12 @@ namespace DSVisualization {
             int y1 = node->y;
             int x2 = node->right->x;
             int y2 = node->right->y;
-            auto* it = new QGraphicsLineItem(x1 + radius / 2, y1 + radius / 2, x2 + radius / 2,
-                                             y2 + radius / 2);
+            auto* it = new QGraphicsLineItem(x1 + r, y1 + r / 2, x2 + r / 2,
+                                             y1 + r / 2);
             tree_view->scene()->addItem(it);
+            auto* it2 = new QGraphicsLineItem(x2 + r / 2, y1 + r / 2, x2 + r / 2,
+                                             y2);
+            tree_view->scene()->addItem(it2);
         }
     }
 
