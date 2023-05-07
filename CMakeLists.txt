@@ -7,6 +7,8 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
 add_compile_options(-Wall -Wextra -Wpedantic)
+add_compile_options(-fsanitize=address)
+add_link_options(-fsanitize=address)
 include(GoogleTest)
 
 find_package(Qt5 COMPONENTS

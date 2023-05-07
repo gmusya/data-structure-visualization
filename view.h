@@ -70,6 +70,7 @@ namespace DSVisualization {
         void RecursiveDraw(const std::shared_ptr<DrawableNode>& node);
 
         const float default_radius = 50;
+        float current_width = 960;
         float width = 5;
         float radius = 50;
         float height = 3;

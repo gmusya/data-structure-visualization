@@ -76,7 +76,7 @@ namespace DSVisualization {
         max_x = 0;
         std::shared_ptr<DrawableNode> result = GetDrawableNode(value, value.root, 0, counter);
         ++cnt;
-        QTimer::singleShot(cnt * 500, this, [=]() {
+        QTimer::singleShot(cnt * 50, this, [=]() {
             this->DrawTree(result);
             if (--cnt == 0) {
                 ShowButtons();
@@ -169,9 +169,9 @@ namespace DSVisualization {
         std::shared_ptr<DrawableNode> result = std::make_shared<DrawableNode>(
                 DrawableNode{0, 0, 0, BLACK, static_cast<Status>(0), nullptr, nullptr});
         result->left = GetDrawableNode(tree_info, node->left, depth + 1, counter);
-        result->x = static_cast<float>(counter) * (width + radius);
+        result->x = static_cast<float>(counter) * (width + default_radius);
         max_x = std::max(result->x, max_x);
-        result->y = static_cast<float>(depth) * (radius + height);
+        result->y = static_cast<float>(depth) * (default_radius + height);
         result->key = node->value;
         result->color = node->color;
         result->status = tree_info.node_to_status.at(node);
@@ -183,6 +183,11 @@ namespace DSVisualization {
     void View::DrawTree(const std::shared_ptr<DrawableNode>& root) {
         PRINT_WHERE_AM_I();
         tree_view->scene()->clear();
+        radius = default_radius;
+        current_width = static_cast<float>(size().width() - 100);
+        if (max_x + default_radius + 40 >= static_cast<float>(current_width)) {
+            radius = default_radius / (max_x + default_radius) * current_width;
+        }
         RecursiveDraw(root);
         tree_view->show();
     }
@@ -207,6 +212,7 @@ namespace DSVisualization {
     void View::DrawEdgeBetweenNodes(const std::shared_ptr<DrawableNode>& parent,
                                     bool is_child_left) {
         PRINT_WHERE_AM_I();
+        std::cerr << "radius = " << radius << std::endl;
         float x1 = parent->x;
         float y1 = parent->y;
         float x2 = is_child_left ? parent->left->x : parent->right->x;
@@ -224,10 +230,8 @@ namespace DSVisualization {
         if (!node) {
             return;
         }
-        radius = default_radius;
-        if (max_x >= 800) {
-            node->x = node->x / max_x * 800;
-            radius = default_radius / max_x * 800;
+        if (max_x + default_radius + 40 >= static_cast<float>(current_width)) {
+            node->x = node->x / (max_x + default_radius) * current_width;
         }
         RecursiveDraw(node->left);
         if (node->left) {
