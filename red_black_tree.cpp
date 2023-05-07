@@ -1,4 +1,5 @@
 #include "red_black_tree.h"
+
 #include <iostream>
 
 namespace DSVisualization {

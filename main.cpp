@@ -1,5 +1,6 @@
 #include "application.h"
 #include "utility.h"
+
 #include <QApplication>
 
 int main(int argc, char* argv[]) {

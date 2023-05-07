@@ -1,5 +1,4 @@
 #include "view.h"
-
 #include "observable.h"
 #include "observer.h"
 #include "queries.h"
@@ -15,7 +14,6 @@
 #include <thread>
 
 namespace DSVisualization {
-
     namespace {
         Qt::GlobalColor FromStatusToQTColor(DSVisualization::Status status) {
             switch (status) {
@@ -29,15 +27,15 @@ namespace DSVisualization {
                     return Qt::GlobalColor::transparent;
             }
         }
-    }// namespace
 
-    std::string GetTextAndClear(QLineEdit* button) {
-        PRINT_WHERE_AM_I();
-        assert(button != nullptr);
-        std::string result = button->text().toStdString();
-        button->clear();
-        return result;
-    }
+        std::string GetTextAndClear(QLineEdit* button) {
+            PRINT_WHERE_AM_I();
+            assert(button != nullptr);
+            std::string result = button->text().toStdString();
+            button->clear();
+            return result;
+        }
+    }// namespace
 
     View::View()
         : observer_model_view(
@@ -67,65 +65,9 @@ namespace DSVisualization {
         show();
     }
 
-    void View::HandlePushButton(TreeQueryType query_type, const std::string& text) {
-        PRINT_WHERE_AM_I();
-        HideButtons();
-        try {
-            int32_t value = std::stoi(text);
-            observable_view_controller->Notify({query_type, value});
-        } catch (...) {
-            QMessageBox messageBox;
-            QMessageBox::critical(nullptr, "Error", "An error has occured!");
-        }
-        if (cnt == 0) {
-            ShowButtons();
-        }
-    }
-
-    void View::OnInsertButtonPushed() {
-        PRINT_WHERE_AM_I();
-        std::string str = GetTextAndClear(addressText1);
-        HandlePushButton(TreeQueryType::INSERT, std::ref(str));
-    }
-
-    void View::OnEraseButtonPushed() {
-        PRINT_WHERE_AM_I();
-        std::string str = GetTextAndClear(addressText2);
-        HandlePushButton(TreeQueryType::ERASE, str);
-    }
-
-    void View::OnFindButtonPushed() {
-        PRINT_WHERE_AM_I();
-        std::string str = GetTextAndClear(addressText3);
-        HandlePushButton(TreeQueryType::FIND, str);
-    }
-
     [[nodiscard]] ObserverModelViewPtr View::GetObserver() const {
         PRINT_WHERE_AM_I();
         return observer_model_view;
-    }
-
-
-    std::shared_ptr<DrawableNode>
-    View::GetDrawableNode(const TreeInfo<int>& tree_info,
-                          const std::shared_ptr<RedBlackTree<int>::Node>& node, int depth,
-                          int& counter) {
-        if (!node) {
-            return nullptr;
-        }
-
-        std::shared_ptr<DrawableNode> result = std::make_shared<DrawableNode>(
-                DrawableNode{0, 0, 0, BLACK, static_cast<Status>(0), nullptr, nullptr});
-        result->left = GetDrawableNode(tree_info, node->left, depth + 1, counter);
-        result->x = static_cast<float>(counter) * (width + radius);
-        max_x = std::max(result->x, max_x);
-        result->y = static_cast<float>(depth) * (radius + height);
-        result->key = node->value;
-        result->color = node->color;
-        result->status = tree_info.node_to_status.at(node);
-        counter++;
-        result->right = GetDrawableNode(tree_info, node->right, depth + 1, counter);
-        return result;
     }
 
     void View::OnNotifyFromModel(const DataModelView& value) {
@@ -152,31 +94,15 @@ namespace DSVisualization {
         observable_view_controller->Unsubscribe(std::move(observer_view_controller));
     }
 
-    void View::DrawTree(const std::shared_ptr<DrawableNode>& root) {
+    void View::AddWidgetsToLayout() {
         PRINT_WHERE_AM_I();
-        tree_view->scene()->clear();
-        RecursiveDraw(root);
-        tree_view->show();
-    }
-
-    void View::RecursiveDraw(const std::shared_ptr<DrawableNode>& node) {
-        if (!node) {
-            return;
-        }
-        radius = default_radius;
-        if (max_x >= 800) {
-            node->x = node->x / max_x * 800;
-            radius = default_radius / max_x * 800;
-        }
-        RecursiveDraw(node->left);
-        if (node->left) {
-            DrawEdgeBetweenNodes(node, true);
-        }
-        DrawNode(node);
-        RecursiveDraw(node->right);
-        if (node->right) {
-            DrawEdgeBetweenNodes(node, false);
-        }
+        mainLayout->addWidget(tree_view, 0, 0, -1, -1);
+        mainLayout->addWidget(addressText1, 1, 0);
+        mainLayout->addWidget(addressText2, 1, 1);
+        mainLayout->addWidget(addressText3, 1, 2);
+        mainLayout->addWidget(button1, 2, 0);
+        mainLayout->addWidget(button2, 2, 1);
+        mainLayout->addWidget(button3, 2, 2);
     }
 
     void View::SetVisibleButtons(bool flag) {
@@ -197,6 +123,68 @@ namespace DSVisualization {
     void View::ShowButtons() {
         PRINT_WHERE_AM_I();
         SetVisibleButtons(true);
+    }
+
+    void View::OnInsertButtonPushed() {
+        PRINT_WHERE_AM_I();
+        std::string str = GetTextAndClear(addressText1);
+        HandlePushButton(TreeQueryType::INSERT, std::ref(str));
+    }
+
+    void View::OnEraseButtonPushed() {
+        PRINT_WHERE_AM_I();
+        std::string str = GetTextAndClear(addressText2);
+        HandlePushButton(TreeQueryType::ERASE, str);
+    }
+
+    void View::OnFindButtonPushed() {
+        PRINT_WHERE_AM_I();
+        std::string str = GetTextAndClear(addressText3);
+        HandlePushButton(TreeQueryType::FIND, str);
+    }
+
+    void View::HandlePushButton(TreeQueryType query_type, const std::string& text) {
+        PRINT_WHERE_AM_I();
+        HideButtons();
+        try {
+            int32_t value = std::stoi(text);
+            observable_view_controller->Notify({query_type, value});
+        } catch (...) {
+            QMessageBox messageBox;
+            QMessageBox::critical(nullptr, "Error", "An error has occurred!");
+        }
+        if (cnt == 0) {
+            ShowButtons();
+        }
+    }
+
+    std::shared_ptr<DrawableNode>
+    View::GetDrawableNode(const TreeInfo<int>& tree_info,
+                          const std::shared_ptr<RedBlackTree<int>::Node>& node, int depth,
+                          int& counter) {
+        if (!node) {
+            return nullptr;
+        }
+
+        std::shared_ptr<DrawableNode> result = std::make_shared<DrawableNode>(
+                DrawableNode{0, 0, 0, BLACK, static_cast<Status>(0), nullptr, nullptr});
+        result->left = GetDrawableNode(tree_info, node->left, depth + 1, counter);
+        result->x = static_cast<float>(counter) * (width + radius);
+        max_x = std::max(result->x, max_x);
+        result->y = static_cast<float>(depth) * (radius + height);
+        result->key = node->value;
+        result->color = node->color;
+        result->status = tree_info.node_to_status.at(node);
+        counter++;
+        result->right = GetDrawableNode(tree_info, node->right, depth + 1, counter);
+        return result;
+    }
+
+    void View::DrawTree(const std::shared_ptr<DrawableNode>& root) {
+        PRINT_WHERE_AM_I();
+        tree_view->scene()->clear();
+        RecursiveDraw(root);
+        tree_view->show();
     }
 
     void View::DrawNode(const std::shared_ptr<DrawableNode>& node) {
@@ -232,15 +220,23 @@ namespace DSVisualization {
         tree_view->scene()->addItem(vertical_line);
     }
 
-    void View::AddWidgetsToLayout() {
-        PRINT_WHERE_AM_I();
-        mainLayout->addWidget(tree_view, 0, 0, -1, -1);
-        mainLayout->addWidget(addressText1, 1, 0);
-        mainLayout->addWidget(addressText2, 1, 1);
-        mainLayout->addWidget(addressText3, 1, 2);
-        mainLayout->addWidget(button1, 2, 0);
-        mainLayout->addWidget(button2, 2, 1);
-        mainLayout->addWidget(button3, 2, 2);
+    void View::RecursiveDraw(const std::shared_ptr<DrawableNode>& node) {
+        if (!node) {
+            return;
+        }
+        radius = default_radius;
+        if (max_x >= 800) {
+            node->x = node->x / max_x * 800;
+            radius = default_radius / max_x * 800;
+        }
+        RecursiveDraw(node->left);
+        if (node->left) {
+            DrawEdgeBetweenNodes(node, true);
+        }
+        DrawNode(node);
+        RecursiveDraw(node->right);
+        if (node->right) {
+            DrawEdgeBetweenNodes(node, false);
+        }
     }
-
 }// namespace DSVisualization

@@ -5,7 +5,6 @@
 #include "utility.h"
 
 namespace DSVisualization {
-
     Controller::Controller() {
         PRINT_WHERE_AM_I();
         observer_view_controller =
@@ -16,6 +15,11 @@ namespace DSVisualization {
 
     Controller::~Controller() {
         PRINT_WHERE_AM_I();
+    }
+
+    void Controller::SetModel(Model* model_ptr_) {
+        PRINT_WHERE_AM_I();
+        model_ptr = model_ptr_;
     }
 
     ObserverViewControllerPtr Controller::GetObserver() const {
@@ -32,10 +36,5 @@ namespace DSVisualization {
         } else if (query.query_type == TreeQueryType::FIND) {
             // TODO: implement
         }
-    }
-
-    void Controller::SetModel(Model* model_ptr_) {
-        PRINT_WHERE_AM_I();
-        model_ptr = model_ptr_;
     }
 }// namespace DSVisualization

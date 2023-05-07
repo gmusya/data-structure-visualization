@@ -1,5 +1,6 @@
 #include "application.h"
 #include "utility.h"
+
 #include <QLayout>
 #include <QtWidgets>
 
@@ -14,13 +15,6 @@ Application::Application() {
     controller_ptr->SetModel(model_ptr);
 }
 
-int Application::Run() {
-    PRINT_WHERE_AM_I();
-    int val = QApplication::exec();
-
-    return val;
-}
-
 Application::~Application() {
     PRINT_WHERE_AM_I();
     model_ptr->UnsubscribeFromView(view_ptr->GetObserver());
@@ -28,4 +22,11 @@ Application::~Application() {
     delete view_ptr;
     delete model_ptr;
     delete controller_ptr;
+}
+
+int Application::Run() {
+    PRINT_WHERE_AM_I();
+    int val = QApplication::exec();
+
+    return val;
 }

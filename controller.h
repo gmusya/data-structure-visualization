@@ -5,13 +5,12 @@
 #include <string>
 
 namespace DSVisualization {
-
     class Model;
 
     template<typename Data>
     class Observer;
 
-    class TreeQuery;
+    struct TreeQuery;
 
     using DataViewController = TreeQuery;
     using ObserverViewControllerPtr = std::shared_ptr<Observer<DataViewController>>;
@@ -20,6 +19,7 @@ namespace DSVisualization {
     public:
         Controller();
         ~Controller();
+
         void SetModel(Model* model);
         [[nodiscard]] ObserverViewControllerPtr GetObserver() const;
         void OnNotifyFromView(const DataViewController& value);

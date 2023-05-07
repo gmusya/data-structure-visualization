@@ -21,10 +21,11 @@ namespace DSVisualization {
     class Model {
     public:
         Model();
-
         ~Model();
+
         void SubscribeFromView(ObserverModelViewPtr observer_model_view);
         void UnsubscribeFromView(ObserverModelViewPtr observer_model_view);
+
         void Insert(int value);
         void Erase(int value);
 
