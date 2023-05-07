@@ -8,10 +8,14 @@
 #include <sstream>
 #include <utility>
 
+#include <ctime>
 #include <QLayout>
 #include <QPushButton>
 #include <QString>
+#include <QThread>
 #include <QtWidgets>
+#include <thread>
+#include <unistd.h>
 
 namespace DSVisualization {
     std::string GetTextAndClear(QLineEdit* button) {
@@ -29,15 +33,19 @@ namespace DSVisualization {
                   })) {
         PRINT_WHERE_AM_I();
         observable_view_controller = std::make_shared<Observable<DataViewController>>();
-        setScene(&scene);
+        scene = new QGraphicsScene;
+        setScene(scene);
     }
 
     void View::HandlePushButton(TreeQueryType query_type, const std::string& text) {
         PRINT_WHERE_AM_I();
+        s = new QSequentialAnimationGroup;
         try {
             int32_t value = std::stoi(text);
             observable_view_controller->Notify({query_type, value});
+            s->start();
         } catch (...) {
+            delete s;
             QMessageBox messageBox;
             QMessageBox::critical(nullptr, "Error", "An error has occured!");
         }
@@ -46,7 +54,7 @@ namespace DSVisualization {
     void View::OnInsertButtonPushed() {
         PRINT_WHERE_AM_I();
         std::string str = GetTextAndClear(addressText1);
-        HandlePushButton(TreeQueryType::INSERT, str);
+        HandlePushButton(TreeQueryType::INSERT, std::ref(str));
     }
 
     void View::OnEraseButtonPushed() {
@@ -106,14 +114,15 @@ namespace DSVisualization {
             return nullptr;
         }
 
-        std::shared_ptr<DrawableNode> result =
-                std::make_shared<DrawableNode>(DrawableNode{0, 0, 0, BLACK, nullptr, nullptr});
+        std::shared_ptr<DrawableNode> result = std::make_shared<DrawableNode>(
+                DrawableNode{0, 0, 0, BLACK, static_cast<Status>(0), nullptr, nullptr});
         result->left = DrawCurrentNode(tree_info, node->left, depth + 1, counter);
         result->x = counter * width + counter * radius;
         max_x = std::max(result->x, max_x);
         result->y = depth * radius + height;
         result->key = node->value;
         result->color = node->color;
+        result->status = tree_info.node_to_status.at(node);
         counter++;
         result->right = DrawCurrentNode(tree_info, node->right, depth + 1, counter);
         return result;
@@ -124,7 +133,9 @@ namespace DSVisualization {
         int counter = 0;
         max_x = 0;
         std::shared_ptr<DrawableNode> result = DrawCurrentNode(value, value.root, 0, counter);
-        Draw(result);
+        ++cnt;
+        QTimer::singleShot(cnt * 500, this, [=]() { this->Draw(result); --cnt; });
+        // Draw(result);
         // label->setText(std::to_string(value.node_to_info.size()).c_str());
     }
 
@@ -160,27 +171,28 @@ namespace DSVisualization {
             int y1 = node->y;
             int x2 = node->left->x;
             int y2 = node->left->y;
-            auto* it = new QGraphicsLineItem(x1 + r / 2, y1 + r / 2, x2 + r / 2,
-                                             y2 + r / 2);
+            auto* it = new QGraphicsLineItem(x1 + r / 2, y1 + r / 2, x2 + r / 2, y2 + r / 2);
             // tree_view->scene()->addItem(it);
-            auto* it1 = new QGraphicsLineItem(x1, y1 + r / 2, x2 + r / 2,
-                                             y1 + r / 2);
+            auto* it1 = new QGraphicsLineItem(x1, y1 + r / 2, x2 + r / 2, y1 + r / 2);
             tree_view->scene()->addItem(it1);
 
-            auto* it2 = new QGraphicsLineItem(x2 + r / 2, y1 + r / 2, x2 + r / 2,
-                                              y2);
+            auto* it2 = new QGraphicsLineItem(x2 + r / 2, y1 + r / 2, x2 + r / 2, y2);
             tree_view->scene()->addItem(it2);
         }
         QPen pen;
-        pen.setBrush(node->color == Color::RED ? Qt::red : Qt::black);
-        tree_view->scene()->addEllipse(node->x, node->y, r, r, pen);
+        QBrush brush;
+        pen.setWidth(5);
+        brush.setColor(node->color == Color::RED ? Qt::red : Qt::black);
+        brush.setStyle(Qt::SolidPattern);
+        pen.setColor(node->status == Status::YA ? Qt::green : brush.color());
+        tree_view->scene()->addEllipse(node->x, node->y, r, r, pen, brush);
         auto* text = new QGraphicsTextItem(std::to_string(node->key).c_str());
         auto rect = text->boundingRect();
         std::cerr << node->x << ' ' << node->y << std::endl;
         std::cerr << rect.x() << ' ' << rect.y() << ' ' << rect.width() << ' ' << rect.height()
                   << std::endl;
-        text->setPos(node->x - rect.width() / 2 + r / 2,
-                     node->y - rect.height() / 2 + r / 2);
+        text->setPos(node->x - rect.width() / 2 + r / 2, node->y - rect.height() / 2 + r / 2);
+        text->setDefaultTextColor(Qt::white);
         tree_view->scene()->addItem(text);
         RecursiveDraw(node->right);
         if (node->right) {
@@ -188,14 +200,10 @@ namespace DSVisualization {
             int y1 = node->y;
             int x2 = node->right->x;
             int y2 = node->right->y;
-            auto* it = new QGraphicsLineItem(x1 + r, y1 + r / 2, x2 + r / 2,
-                                             y1 + r / 2);
+            auto* it = new QGraphicsLineItem(x1 + r, y1 + r / 2, x2 + r / 2, y1 + r / 2);
             tree_view->scene()->addItem(it);
-            auto* it2 = new QGraphicsLineItem(x2 + r / 2, y1 + r / 2, x2 + r / 2,
-                                             y2);
+            auto* it2 = new QGraphicsLineItem(x2 + r / 2, y1 + r / 2, x2 + r / 2, y2);
             tree_view->scene()->addItem(it2);
         }
     }
-
-
 }// namespace DSVisualization

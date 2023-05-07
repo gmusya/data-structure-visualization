@@ -13,9 +13,7 @@ namespace DSVisualization {
 
     void Model::Insert(int value) {
         PRINT_WHERE_AM_I();
-        values.Insert(value);
-        TreeInfo<int> tree_info = GetTreeInfo(values);
-        observable_model_view->Notify(tree_info);
+        values.Insert(value, observable_model_view);
     }
 
     void Model::Erase(int value) {

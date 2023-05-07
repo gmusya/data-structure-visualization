@@ -32,6 +32,7 @@ namespace DSVisualization {
         float y;
         int key;
         Color color;
+        Status status;
         std::shared_ptr<DrawableNode> left;
         std::shared_ptr<DrawableNode> right;
     };
@@ -66,8 +67,11 @@ namespace DSVisualization {
         QGraphicsView* tree_view;
         QPainter* q_painter;
         QPaintDeviceWindow* q;
-        QGraphicsScene scene;
+        QSequentialAnimationGroup* s;
+        QSequentialAnimationGroup* anim;
+        QGraphicsScene* scene;
         float max_x = 0;
+        int cnt = 0;
         ObserverModelViewPtr observer_model_view;
         ObservableViewControllerPtr observable_view_controller;
 
