@@ -22,12 +22,14 @@ namespace DSVisualization {
     namespace {
         Qt::GlobalColor FromStatusToQTColor(DSVisualization::Status status) {
             switch (status) {
-                case DSVisualization::Status::DEFAULT:
-                    return Qt::GlobalColor::transparent;
+                case DSVisualization::Status::TO_DELETE:
+                    return Qt::GlobalColor::darkBlue;
                 case DSVisualization::Status::TOUCHED:
                     return Qt::GlobalColor::green;
                 case DSVisualization::Status::CURRENT:
                     return Qt::GlobalColor::yellow;
+                default:
+                    return Qt::GlobalColor::transparent;
             }
         }
     }

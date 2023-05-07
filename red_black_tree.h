@@ -15,7 +15,7 @@
 
 namespace DSVisualization {
     enum Color { RED, BLACK };
-    enum Status { DEFAULT, TOUCHED, CURRENT };
+    enum Status { DEFAULT, TOUCHED, CURRENT, TO_DELETE };
     enum Kid { LEFT, RIGHT };
 
     template<typename T>
@@ -25,7 +25,7 @@ namespace DSVisualization {
     class RedBlackTree {
     public:
         RedBlackTree();
-        bool Erase(const T& value);
+        bool Erase(const T& value, std::shared_ptr<Observable<TreeInfo<int>>> port);
         bool Insert(const T& value, std::shared_ptr<Observable<TreeInfo<int>>> port);
         [[nodiscard]] size_t Size() const;
         [[nodiscard]] bool Empty() const;
@@ -245,27 +245,40 @@ namespace DSVisualization {
     }
 
     template<typename T>
-    bool RedBlackTree<T>::Erase(const T& value) {
+    bool RedBlackTree<T>::Erase(const T& value, std::shared_ptr<Observable<TreeInfo<int>>> port) {
+        auto data = GetTreeInfo(*this);
         NodePtr node = SearchValue(value);
         if (!node) {
             return false;
         }
+        data.node_to_status[node] = Status::TO_DELETE;
+        port->Notify(data);
         --size_;
         if (NodePtr node_to_delete = GetNearestLeaf(node)) {
+            data.node_to_status[node_to_delete] = Status::TOUCHED;
+            port->Notify(data);
+            data.node_to_status[node_to_delete] = Status::TO_DELETE;
+            data.node_to_status[node] = Status::TOUCHED;
+            port->Notify(data);
             node->value = node_to_delete->value;
+            data.node_to_status[node] = Status::DEFAULT;
+            port->Notify(data);
             node = node_to_delete;
         }
         if (!node->parent) {
             root_ = nullptr;
+            data.root = root_;
             return true;
         }
         Kid kid = node->parent->WhichKid(node);
         (kid == Kid::LEFT ? node->parent->left : node->parent->right) = node->right;
         if (node->right) {
             node->right->parent = node->parent;
+            port->Notify(data);
         }
         if (node->color == Color::RED) {
             node->right = node->left = node->parent = nullptr;
+            port->Notify(data);
             return true;
         }
         NodePtr parent = node->parent;
@@ -273,6 +286,7 @@ namespace DSVisualization {
             NodePtr nr = node->right;
             node->right = node->left = node->parent = nullptr;
             node = nr;
+            port->Notify(data);
         }
         while (true) {
             if (!node) {
@@ -284,6 +298,8 @@ namespace DSVisualization {
                     (kid == Kid::LEFT ? Node::RotateLeft(sibling) : Node::RotateRight(sibling));
                     sibling = (kid == Kid::LEFT ? parent->right : parent->left);
                     UpdateRoot();
+                    data.root = root_;
+                    port->Notify(data);
                 }
                 if (parent->color == Color::BLACK &&
                     (!sibling->left || sibling->left->color == Color::BLACK) &&
@@ -291,6 +307,7 @@ namespace DSVisualization {
                     sibling->color = Color::RED;
                     node = parent;
                     parent = node->parent;
+                    port->Notify(data);
                     continue;
                 }
                 if (parent->color == Color::RED &&
@@ -298,6 +315,7 @@ namespace DSVisualization {
                     (!sibling->right || sibling->right->color == Color::BLACK)) {
                     parent->color = Color::BLACK;
                     sibling->color = Color::RED;
+                    port->Notify(data);
                     return true;
                 }
                 if ((kid == Kid::LEFT && Node::Color(sibling->left) == Color::RED &&
@@ -306,26 +324,34 @@ namespace DSVisualization {
                      Node::Color(sibling->right) == Color::RED)) {
                     if (kid == Kid::LEFT) {
                         Node::RotateRight(sibling->left);
+                        port->Notify(data);
                     } else {
                         Node::RotateLeft(sibling->right);
+                        port->Notify(data);
                     }
                     sibling->color = Color::RED;
                     sibling->parent->color = Color::BLACK;
                     sibling = sibling->parent;
+                    port->Notify(data);
                 }
                 enum Color color = parent->color;
                 if (kid == Kid::LEFT) {
                     Node::RotateLeft(sibling);
+                    port->Notify(data);
                 } else {
                     Node::RotateRight(sibling);
+                    port->Notify(data);
                 }
                 parent->color = Color::BLACK;
                 (kid == Kid::LEFT ? sibling->right : sibling->left)->color = Color::BLACK;
                 parent->parent->color = color;
                 UpdateRoot();
+                data.root = root_;
+                port->Notify(data);
                 return true;
             }
             if (!node->parent) {
+                port->Notify(data);
                 return true;
             }
             kid = node->parent->WhichKid(node);
@@ -335,12 +361,14 @@ namespace DSVisualization {
                 sibling->color = Color::BLACK;
                 (kid == Kid::LEFT ? Node::RotateLeft(sibling) : Node::RotateRight(sibling));
                 sibling = (kid == Kid::LEFT ? node->parent->right : node->parent->left);
+                port->Notify(data);
             }
             if (node->parent->color == Color::BLACK &&
                 (!sibling->left || sibling->left->color == Color::BLACK) &&
                 (!sibling->right || sibling->right->color == Color::BLACK)) {
                 sibling->color = Color::RED;
                 node = node->parent;
+                port->Notify(data);
                 continue;
             }
             if (node->parent->color == Color::RED &&
@@ -349,6 +377,8 @@ namespace DSVisualization {
                 node->parent->color = Color::BLACK;
                 sibling->color = Color::RED;
                 UpdateRoot();
+                data.root = root_;
+                port->Notify(data);
                 return true;
             }
             if ((kid == Kid::LEFT && Node::Color(sibling->left) == Color::RED &&
@@ -357,23 +387,30 @@ namespace DSVisualization {
                  Node::Color(sibling->right) == Color::RED)) {
                 if (kid == Kid::LEFT) {
                     Node::RotateRight(sibling->left);
+                    port->Notify(data);
                 } else {
                     Node::RotateLeft(sibling->right);
+                    port->Notify(data);
                 }
                 sibling->color = Color::RED;
                 sibling->parent->color = Color::BLACK;
                 sibling = sibling->parent;
+                port->Notify(data);
             }
             enum Color color = node->parent->color;
             if (kid == Kid::LEFT) {
                 Node::RotateLeft(sibling);
+                port->Notify(data);
             } else {
                 Node::RotateRight(sibling);
+                port->Notify(data);
             }
             node->parent->color = Color::BLACK;
             (kid == Kid::LEFT ? sibling->right : sibling->left)->color = Color::BLACK;
             node->parent->parent->color = color;
             UpdateRoot();
+            data.root = root_;
+            port->Notify(data);
             return true;
         }
     }

@@ -18,9 +18,7 @@ namespace DSVisualization {
 
     void Model::Erase(int value) {
         PRINT_WHERE_AM_I();
-        values.Erase(value);
-        TreeInfo<int> tree_info = GetTreeInfo(values);
-        observable_model_view->Notify(tree_info);
+        values.Erase(value, observable_model_view);
     }
 
 
