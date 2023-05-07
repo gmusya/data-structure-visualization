@@ -654,7 +654,7 @@ a     c                                          c     e
         tree_info.node_to_status[d] = tree_info.node_to_status[b] =
                 tree_info.node_to_status[b->left] = tree_info.node_to_status[b->right] =
                         tree_info.node_to_status[d->right] = Status::ROTATE;
-        port->Notify(tree_info);
+        Send(port, tree_info);
         d->parent = b;
         d->left = c;
         if (c) {
@@ -670,7 +670,7 @@ a     c                                          c     e
             }
         }
         tree_info.root = GetRoot(b);
-        port->Notify(tree_info);
+        Send(port, tree_info);
     }
 
     template<typename T>
