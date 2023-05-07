@@ -32,7 +32,7 @@ namespace DSVisualization {
                     return Qt::GlobalColor::transparent;
             }
         }
-    }
+    }// namespace
 
     std::string GetTextAndClear(QLineEdit* button) {
         PRINT_WHERE_AM_I();
@@ -55,13 +55,16 @@ namespace DSVisualization {
 
     void View::HandlePushButton(TreeQueryType query_type, const std::string& text) {
         PRINT_WHERE_AM_I();
-        s = new QSequentialAnimationGroup;
+        button1->setVisible(false);
+        button2->setVisible(false);
+        button3->setVisible(false);
+        addressText1->setVisible(false);
+        addressText2->setVisible(false);
+        addressText3->setVisible(false);
         try {
             int32_t value = std::stoi(text);
             observable_view_controller->Notify({query_type, value});
-            s->start();
         } catch (...) {
-            delete s;
             QMessageBox messageBox;
             QMessageBox::critical(nullptr, "Error", "An error has occured!");
         }
@@ -88,9 +91,10 @@ namespace DSVisualization {
     void View::DoStuff() {
         PRINT_WHERE_AM_I();
         mainLayout = new QGridLayout;
-        auto* button1 = new QPushButton("Insert");
-        auto* button2 = new QPushButton("Erase");
-        auto* button3 = new QPushButton("Find (not implemented)");
+        otherLayout = new QGridLayout;
+        button1 = new QPushButton("Insert");
+        button2 = new QPushButton("Erase");
+        button3 = new QPushButton("Find (not implemented)");
         addressText1 = new QLineEdit;
         addressText2 = new QLineEdit;
         addressText3 = new QLineEdit;
@@ -107,6 +111,7 @@ namespace DSVisualization {
         mainLayout->addWidget(button1, 2, 0);
         mainLayout->addWidget(button2, 2, 1);
         mainLayout->addWidget(button3, 2, 2);
+        otherLayout->addWidget(tree_view);
         QObject::connect(button1, &QPushButton::clicked, this, &View::OnInsertButtonPushed);
         QObject::connect(button2, &QPushButton::clicked, this, &View::OnEraseButtonPushed);
         QObject::connect(button3, &QPushButton::clicked, this, &View::OnFindButtonPushed);
@@ -150,7 +155,17 @@ namespace DSVisualization {
         max_x = 0;
         std::shared_ptr<DrawableNode> result = DrawCurrentNode(value, value.root, 0, counter);
         ++cnt;
-        QTimer::singleShot(cnt * 500, this, [=]() { this->Draw(result); --cnt; });
+        QTimer::singleShot(cnt * 500, this, [=]() {
+            this->Draw(result);
+            if (--cnt == 0) {
+                button1->setVisible(true);
+                button2->setVisible(true);
+                button3->setVisible(true);
+                addressText1->setVisible(true);
+                addressText2->setVisible(true);
+                addressText3->setVisible(true);
+            }
+        });
         // Draw(result);
         // label->setText(std::to_string(value.node_to_info.size()).c_str());
     }
