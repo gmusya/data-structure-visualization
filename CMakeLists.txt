@@ -25,8 +25,6 @@ target_link_libraries(data_structure_visualization
         Qt5::Widgets
         )
 
-add_executable(red_black_tree red_black_tree.cpp)
-
 enable_testing()
 add_subdirectory(lib/googletest)
 include_directories(lib/googletest/googletest/include)

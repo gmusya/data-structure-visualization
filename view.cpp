@@ -23,6 +23,8 @@ namespace DSVisualization {
                     return Qt::GlobalColor::green;
                 case DSVisualization::Status::CURRENT:
                     return Qt::GlobalColor::yellow;
+                case DSVisualization::Status::ROTATE:
+                    return Qt::GlobalColor::magenta;
                 default:
                     return Qt::GlobalColor::transparent;
             }
@@ -76,7 +78,7 @@ namespace DSVisualization {
         max_x = 0;
         std::shared_ptr<DrawableNode> result = GetDrawableNode(value, value.root, 0, counter);
         ++cnt;
-        QTimer::singleShot(cnt * 50, this, [=]() {
+        QTimer::singleShot(cnt * 500, this, [=]() {
             this->DrawTree(result);
             if (--cnt == 0) {
                 ShowButtons();
