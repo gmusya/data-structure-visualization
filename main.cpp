@@ -5,7 +5,7 @@
 int main(int argc, char* argv[]) {
     QApplication q_app(argc, argv);
     Application app;
-    app.Run();
+    Application::Run();
     PRINT_WHERE_AM_I();
     return 0;
 }

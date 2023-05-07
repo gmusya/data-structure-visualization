@@ -25,8 +25,8 @@ namespace DSVisualization {
     class RedBlackTree {
     public:
         RedBlackTree();
-        bool Erase(const T& value, std::shared_ptr<Observable<TreeInfo<int>>> port);
-        bool Insert(const T& value, std::shared_ptr<Observable<TreeInfo<int>>> port);
+        bool Erase(const T& value, const std::shared_ptr<Observable<TreeInfo<int>>>& port);
+        bool Insert(const T& value, const std::shared_ptr<Observable<TreeInfo<int>>>& port);
         [[nodiscard]] size_t Size() const;
         [[nodiscard]] bool Empty() const;
         void Print(std::ostream& os) const;
@@ -52,7 +52,6 @@ namespace DSVisualization {
             static void RotateRight(NodePtr b);
             static void Unlink(NodePtr node);
             static void Values(NodePtr node, std::vector<T>& values);
-            static NodePtr GetRoot(NodePtr node);
             static NodePtr Next(NodePtr node);
 #ifdef INVARIANTS_CHECK
             static void CheckInvariants(NodePtr node, std::vector<T>& values,
@@ -79,7 +78,8 @@ namespace DSVisualization {
     };
 
     template<typename T>
-    struct TreeInfo {
+    class TreeInfo {
+    public:
         using NodePtr = std::shared_ptr<typename RedBlackTree<T>::Node>;
         NodePtr root;
         std::map<NodePtr, Status> node_to_status;
@@ -105,7 +105,7 @@ namespace DSVisualization {
     }
 
     template<typename T>
-    bool RedBlackTree<T>::Insert(const T& value, std::shared_ptr<Observable<TreeInfo<int>>> port) {
+    bool RedBlackTree<T>::Insert(const T& value, const std::shared_ptr<Observable<TreeInfo<int>>>& port) {
         auto data = GetTreeInfo(*this);
         if (!root_) {
             root_ = std::make_shared<Node>(value);
@@ -245,7 +245,7 @@ namespace DSVisualization {
     }
 
     template<typename T>
-    bool RedBlackTree<T>::Erase(const T& value, std::shared_ptr<Observable<TreeInfo<int>>> port) {
+    bool RedBlackTree<T>::Erase(const T& value, const std::shared_ptr<Observable<TreeInfo<int>>>& port) {
         auto data = GetTreeInfo(*this);
         NodePtr node = SearchValue(value);
         if (!node) {
@@ -637,14 +637,6 @@ a     c                                          c     e
         Values(node->left, values);
         values.push_back(node->value);
         Values(node->right, values);
-    }
-
-    template<typename T>
-    std::shared_ptr<typename RedBlackTree<T>::Node> RedBlackTree<T>::Node::GetRoot(NodePtr node) {
-        while (node->parent) {
-            node = node->parent;
-        }
-        return node;
     }
 
     template<typename T>

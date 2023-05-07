@@ -9,7 +9,6 @@ Application::Application() {
     model_ptr = new DSVisualization::Model();
     controller_ptr = new DSVisualization::Controller();
 
-    view_ptr->DoStuff();
     view_ptr->SubscribeFromController(controller_ptr->GetObserver());
     model_ptr->SubscribeFromView(view_ptr->GetObserver());
     controller_ptr->SetModel(model_ptr);

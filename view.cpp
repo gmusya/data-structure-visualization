@@ -8,14 +8,11 @@
 #include <sstream>
 #include <utility>
 
-#include <ctime>
 #include <QLayout>
 #include <QPushButton>
 #include <QString>
-#include <QThread>
 #include <QtWidgets>
 #include <thread>
-#include <unistd.h>
 
 namespace DSVisualization {
 
@@ -49,24 +46,39 @@ namespace DSVisualization {
                   })) {
         PRINT_WHERE_AM_I();
         observable_view_controller = std::make_shared<Observable<DataViewController>>();
-        scene = new QGraphicsScene;
+        scene = new QGraphicsScene(this);
         setScene(scene);
+        mainLayout = new QGridLayout;
+        button1 = new QPushButton("Insert");
+        button2 = new QPushButton("Erase");
+        button3 = new QPushButton("Find (not implemented)");
+        addressText1 = new QLineEdit;
+        addressText2 = new QLineEdit;
+        addressText3 = new QLineEdit;
+        auto tree_scene = new QGraphicsScene();
+        tree_view = new QGraphicsView(tree_scene);
+        AddWidgetsToLayout();
+        QObject::connect(button1, &QPushButton::clicked, this, &View::OnInsertButtonPushed);
+        QObject::connect(button2, &QPushButton::clicked, this, &View::OnEraseButtonPushed);
+        QObject::connect(button3, &QPushButton::clicked, this, &View::OnFindButtonPushed);
+        setLayout(mainLayout);
+        setSceneRect(0, 0, 500, 500);
+        setMinimumSize(960, 540);
+        show();
     }
 
     void View::HandlePushButton(TreeQueryType query_type, const std::string& text) {
         PRINT_WHERE_AM_I();
-        button1->setVisible(false);
-        button2->setVisible(false);
-        button3->setVisible(false);
-        addressText1->setVisible(false);
-        addressText2->setVisible(false);
-        addressText3->setVisible(false);
+        HideButtons();
         try {
             int32_t value = std::stoi(text);
             observable_view_controller->Notify({query_type, value});
         } catch (...) {
             QMessageBox messageBox;
             QMessageBox::critical(nullptr, "Error", "An error has occured!");
+        }
+        if (cnt == 0) {
+            ShowButtons();
         }
     }
 
@@ -88,40 +100,6 @@ namespace DSVisualization {
         HandlePushButton(TreeQueryType::FIND, str);
     }
 
-    void View::DoStuff() {
-        PRINT_WHERE_AM_I();
-        mainLayout = new QGridLayout;
-        otherLayout = new QGridLayout;
-        button1 = new QPushButton("Insert");
-        button2 = new QPushButton("Erase");
-        button3 = new QPushButton("Find (not implemented)");
-        addressText1 = new QLineEdit;
-        addressText2 = new QLineEdit;
-        addressText3 = new QLineEdit;
-        auto tree_scene = new QGraphicsScene();
-        q_painter = new QPainter;
-        auto q_window = new QWindow;
-        q_painter->setWindow(0, 0, 540, 500);
-        tree_view = new QGraphicsView(tree_scene);
-        // tree_view->setSceneRect(0, 0, 540, 500);
-        mainLayout->addWidget(tree_view, 0, 0, -1, -1);
-        mainLayout->addWidget(addressText1, 1, 0);
-        mainLayout->addWidget(addressText2, 1, 1);
-        mainLayout->addWidget(addressText3, 1, 2);
-        mainLayout->addWidget(button1, 2, 0);
-        mainLayout->addWidget(button2, 2, 1);
-        mainLayout->addWidget(button3, 2, 2);
-        otherLayout->addWidget(tree_view);
-        QObject::connect(button1, &QPushButton::clicked, this, &View::OnInsertButtonPushed);
-        QObject::connect(button2, &QPushButton::clicked, this, &View::OnEraseButtonPushed);
-        QObject::connect(button3, &QPushButton::clicked, this, &View::OnFindButtonPushed);
-        setLayout(mainLayout);
-        setSceneRect(0, 0, 500, 500);
-        setMinimumSize(960, 540);
-        setMaximumSize(960, 540);
-        show();
-    }
-
     [[nodiscard]] ObserverModelViewPtr View::GetObserver() const {
         PRINT_WHERE_AM_I();
         return observer_model_view;
@@ -129,23 +107,24 @@ namespace DSVisualization {
 
 
     std::shared_ptr<DrawableNode>
-    View::DrawCurrentNode(const TreeInfo<int>& tree_info,
-                          std::shared_ptr<RedBlackTree<int>::Node> node, int depth, int& counter) {
+    View::GetDrawableNode(const TreeInfo<int>& tree_info,
+                          const std::shared_ptr<RedBlackTree<int>::Node>& node, int depth,
+                          int& counter) {
         if (!node) {
             return nullptr;
         }
 
         std::shared_ptr<DrawableNode> result = std::make_shared<DrawableNode>(
                 DrawableNode{0, 0, 0, BLACK, static_cast<Status>(0), nullptr, nullptr});
-        result->left = DrawCurrentNode(tree_info, node->left, depth + 1, counter);
-        result->x = counter * width + counter * radius;
+        result->left = GetDrawableNode(tree_info, node->left, depth + 1, counter);
+        result->x = static_cast<float>(counter) * (width + radius);
         max_x = std::max(result->x, max_x);
-        result->y = depth * radius + height;
+        result->y = static_cast<float>(depth) * (radius + height);
         result->key = node->value;
         result->color = node->color;
         result->status = tree_info.node_to_status.at(node);
         counter++;
-        result->right = DrawCurrentNode(tree_info, node->right, depth + 1, counter);
+        result->right = GetDrawableNode(tree_info, node->right, depth + 1, counter);
         return result;
     }
 
@@ -153,21 +132,14 @@ namespace DSVisualization {
         PRINT_WHERE_AM_I();
         int counter = 0;
         max_x = 0;
-        std::shared_ptr<DrawableNode> result = DrawCurrentNode(value, value.root, 0, counter);
+        std::shared_ptr<DrawableNode> result = GetDrawableNode(value, value.root, 0, counter);
         ++cnt;
         QTimer::singleShot(cnt * 500, this, [=]() {
-            this->Draw(result);
+            this->DrawTree(result);
             if (--cnt == 0) {
-                button1->setVisible(true);
-                button2->setVisible(true);
-                button3->setVisible(true);
-                addressText1->setVisible(true);
-                addressText2->setVisible(true);
-                addressText3->setVisible(true);
+                ShowButtons();
             }
         });
-        // Draw(result);
-        // label->setText(std::to_string(value.node_to_info.size()).c_str());
     }
 
     void View::SubscribeFromController(ObserverViewControllerPtr observer_view_controller) {
@@ -180,61 +152,95 @@ namespace DSVisualization {
         observable_view_controller->Unsubscribe(std::move(observer_view_controller));
     }
 
-    void View::Draw(std::shared_ptr<DrawableNode> node) {
+    void View::DrawTree(const std::shared_ptr<DrawableNode>& root) {
+        PRINT_WHERE_AM_I();
         tree_view->scene()->clear();
-        RecursiveDraw(node);
+        RecursiveDraw(root);
         tree_view->show();
     }
 
-    void View::RecursiveDraw(std::shared_ptr<DrawableNode> node) {
-
+    void View::RecursiveDraw(const std::shared_ptr<DrawableNode>& node) {
         if (!node) {
             return;
         }
-        double r = radius;
+        radius = default_radius;
         if (max_x >= 800) {
             node->x = node->x / max_x * 800;
-            r = radius / max_x * 800;
+            radius = default_radius / max_x * 800;
         }
         RecursiveDraw(node->left);
         if (node->left) {
-            int x1 = node->x;
-            int y1 = node->y;
-            int x2 = node->left->x;
-            int y2 = node->left->y;
-            auto* it = new QGraphicsLineItem(x1 + r / 2, y1 + r / 2, x2 + r / 2, y2 + r / 2);
-            // tree_view->scene()->addItem(it);
-            auto* it1 = new QGraphicsLineItem(x1, y1 + r / 2, x2 + r / 2, y1 + r / 2);
-            tree_view->scene()->addItem(it1);
-
-            auto* it2 = new QGraphicsLineItem(x2 + r / 2, y1 + r / 2, x2 + r / 2, y2);
-            tree_view->scene()->addItem(it2);
+            DrawEdgeBetweenNodes(node, true);
         }
+        DrawNode(node);
+        RecursiveDraw(node->right);
+        if (node->right) {
+            DrawEdgeBetweenNodes(node, false);
+        }
+    }
+
+    void View::SetVisibleButtons(bool flag) {
+        PRINT_WHERE_AM_I();
+        button1->setVisible(flag);
+        button2->setVisible(flag);
+        button3->setVisible(flag);
+        addressText1->setVisible(flag);
+        addressText2->setVisible(flag);
+        addressText3->setVisible(flag);
+    }
+
+    void View::HideButtons() {
+        PRINT_WHERE_AM_I();
+        SetVisibleButtons(false);
+    }
+
+    void View::ShowButtons() {
+        PRINT_WHERE_AM_I();
+        SetVisibleButtons(true);
+    }
+
+    void View::DrawNode(const std::shared_ptr<DrawableNode>& node) {
+        PRINT_WHERE_AM_I();
         QPen pen;
         QBrush brush;
         pen.setWidth(5);
         brush.setColor(node->color == Color::RED ? Qt::red : Qt::black);
         brush.setStyle(Qt::SolidPattern);
         pen.setColor(FromStatusToQTColor(node->status));
-        tree_view->scene()->addEllipse(node->x, node->y, r, r, pen, brush);
+        tree_view->scene()->addEllipse(node->x, node->y, radius, radius, pen, brush);
         auto* text = new QGraphicsTextItem(std::to_string(node->key).c_str());
         auto rect = text->boundingRect();
-        std::cerr << node->x << ' ' << node->y << std::endl;
-        std::cerr << rect.x() << ' ' << rect.y() << ' ' << rect.width() << ' ' << rect.height()
-                  << std::endl;
-        text->setPos(node->x - rect.width() / 2 + r / 2, node->y - rect.height() / 2 + r / 2);
+        text->setPos(node->x - rect.width() / 2 + radius / 2,
+                     node->y - rect.height() / 2 + radius / 2);
         text->setDefaultTextColor(Qt::white);
         tree_view->scene()->addItem(text);
-        RecursiveDraw(node->right);
-        if (node->right) {
-            int x1 = node->x;
-            int y1 = node->y;
-            int x2 = node->right->x;
-            int y2 = node->right->y;
-            auto* it = new QGraphicsLineItem(x1 + r, y1 + r / 2, x2 + r / 2, y1 + r / 2);
-            tree_view->scene()->addItem(it);
-            auto* it2 = new QGraphicsLineItem(x2 + r / 2, y1 + r / 2, x2 + r / 2, y2);
-            tree_view->scene()->addItem(it2);
-        }
     }
+
+    void View::DrawEdgeBetweenNodes(const std::shared_ptr<DrawableNode>& parent,
+                                    bool is_child_left) {
+        PRINT_WHERE_AM_I();
+        float x1 = parent->x;
+        float y1 = parent->y;
+        float x2 = is_child_left ? parent->left->x : parent->right->x;
+        float y2 = is_child_left ? parent->left->y : parent->right->y;
+        auto* horizontal_line =
+                new QGraphicsLineItem(x1 + (is_child_left ? 0 : radius), y1 + radius / 2,
+                                      x2 + radius / 2, y1 + radius / 2);
+        auto* vertical_line =
+                new QGraphicsLineItem(x2 + radius / 2, y1 + radius / 2, x2 + radius / 2, y2);
+        tree_view->scene()->addItem(horizontal_line);
+        tree_view->scene()->addItem(vertical_line);
+    }
+
+    void View::AddWidgetsToLayout() {
+        PRINT_WHERE_AM_I();
+        mainLayout->addWidget(tree_view, 0, 0, -1, -1);
+        mainLayout->addWidget(addressText1, 1, 0);
+        mainLayout->addWidget(addressText2, 1, 1);
+        mainLayout->addWidget(addressText3, 1, 2);
+        mainLayout->addWidget(button1, 2, 0);
+        mainLayout->addWidget(button2, 2, 1);
+        mainLayout->addWidget(button3, 2, 2);
+    }
+
 }// namespace DSVisualization

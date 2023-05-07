@@ -1,6 +1,4 @@
-#define INVARIANTS_CHECK
 #include "red_black_tree.h"
-#include <gtest/gtest.h>
 #include <iostream>
 
 namespace DSVisualization {

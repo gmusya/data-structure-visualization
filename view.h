@@ -40,42 +40,46 @@ namespace DSVisualization {
     class View : public QGraphicsView {
     public:
         View();
-        void DoStuff();
-
-        void OnInsertButtonPushed();
-        void OnEraseButtonPushed();
-        void OnFindButtonPushed();
 
         [[nodiscard]] ObserverModelViewPtr GetObserver() const;
         void OnNotifyFromModel(const DataModelView& value);
         void SubscribeFromController(ObserverViewControllerPtr observer_view_controller);
         void UnsubscribeFromController(ObserverViewControllerPtr observer_view_controller);
 
-        void Draw(std::shared_ptr<DrawableNode> node);
-        void RecursiveDraw(std::shared_ptr<DrawableNode> node);
-        std::shared_ptr<DrawableNode> DrawCurrentNode(const TreeInfo<int>& tree_info,
-                                                      std::shared_ptr<RedBlackTree<int>::Node> node,
-                                                      int depth, int& counter);
     private:
-        int width = 5;
-        int radius = 50;
-        int height = 3;
+        const float default_radius = 50;
+        float width = 5;
+        float radius = 50;
+        float height = 3;
         QPushButton* button1;
         QPushButton* button2;
         QPushButton* button3;
         QGridLayout* mainLayout;
-        QGridLayout* otherLayout;
         QLineEdit* addressText1;
         QLineEdit* addressText2;
         QLineEdit* addressText3;
         QGraphicsView* tree_view;
-        QPainter* q_painter;
         QGraphicsScene* scene;
         float max_x = 0;
         int cnt = 0;
         ObserverModelViewPtr observer_model_view;
         ObservableViewControllerPtr observable_view_controller;
 
+        void AddWidgetsToLayout();
+        void SetVisibleButtons(bool flag);
+        void HideButtons();
+        void ShowButtons();
+        void OnInsertButtonPushed();
+        void OnEraseButtonPushed();
+        void OnFindButtonPushed();
+        void DrawTree(const std::shared_ptr<DrawableNode>& root);
+        void DrawNode(const std::shared_ptr<DrawableNode>& node);
+        void DrawEdgeBetweenNodes(const std::shared_ptr<DrawableNode>& parent, bool is_child_left);
+        void RecursiveDraw(const std::shared_ptr<DrawableNode>& node);
+        std::shared_ptr<DrawableNode>
+        GetDrawableNode(const TreeInfo<int>& tree_info,
+                        const std::shared_ptr<RedBlackTree<int>::Node>& node, int depth,
+                        int& counter);
         void HandlePushButton(DSVisualization::TreeQueryType query_type, const std::string& text);
     };
 }// namespace DSVisualization
