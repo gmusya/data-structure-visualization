@@ -15,7 +15,7 @@
 
 namespace DSVisualization {
     enum Color { RED, BLACK };
-    enum Status { NAH, YA };
+    enum Status { DEFAULT, TOUCHED, CURRENT };
     enum Kid { LEFT, RIGHT };
 
     template<typename T>
@@ -92,7 +92,7 @@ namespace DSVisualization {
         TreeInfo<T> tree_info;
         for (NodePtr node = red_black_tree.FirstNode(); node != nullptr;
              node = RedBlackTree<T>::Node::Next(node)) {
-            tree_info.node_to_status[node] = NAH;
+            tree_info.node_to_status[node] = DEFAULT;
         }
         tree_info.root = red_black_tree.Root();
         return tree_info;
@@ -111,34 +111,39 @@ namespace DSVisualization {
             root_ = std::make_shared<Node>(value);
             ++size_;
             {
-                data.node_to_status[root_] = Status::YA;
+                data.node_to_status[root_] = Status::CURRENT;
                 data.root = Root();
+                port->Notify(data);
+                data.node_to_status[root_] = Status::TOUCHED;
                 port->Notify(data);
             }
             return true;
         }
         NodePtr node = root_;
-        data.node_to_status[root_] = Status::YA;
+        data.node_to_status[root_] = Status::CURRENT;
         port->Notify(data);
         NodePtr parent = nullptr;
         while (node) {
             parent = node;
             if (value < node->value) {
+                data.node_to_status[node] = Status::TOUCHED;
                 node = node->left;
-                data.node_to_status[node] = Status::YA;
+                data.node_to_status[node] = Status::CURRENT;
             } else if (value == node->value) {
                 port->Notify(data);
                 return false;
             } else {
+                data.node_to_status[node] = Status::TOUCHED;
                 node = node->right;
-                data.node_to_status[node] = Status::YA;
+                data.node_to_status[node] = Status::CURRENT;
             }
             port->Notify(data);
         }
 
         ++size_;
         node = std::make_shared<Node>(value, parent, Color::RED);
-        data.node_to_status[node] = Status::YA;
+        data.node_to_status[node] = Status::CURRENT;
+        port->Notify(data);
         (value < parent->value ? parent->left : parent->right) = node;
         while (true) {
             if (!parent || parent->color == Color::BLACK) {
@@ -153,7 +158,10 @@ namespace DSVisualization {
                 node->GetUncle()->color = Color::BLACK;
                 node->parent->color = Color::BLACK;
                 node->parent->parent->color = Color::RED;
+                data.node_to_status[node] = Status::TOUCHED;
                 node = node->parent->parent;
+                data.node_to_status[node] = Status::CURRENT;
+                port->Notify(data);
                 parent = node->parent;
             } else {
                 break;
@@ -162,29 +170,35 @@ namespace DSVisualization {
         if (node->GetGrandParent()->WhichKid(node->parent) == Kid::LEFT) {
             if (node->parent->WhichKid(node) == Kid::RIGHT) {
                 Node::RotateLeft(node);
+                data.node_to_status[node] = Status::TOUCHED;
                 node = node->left;
+                data.node_to_status[node] = Status::CURRENT;
+                port->Notify(data);
             }
             Node::RotateRight(node->parent);
             node->parent->color = Color::BLACK;
             node->parent->right->color = Color::RED;
             if (!node->parent->parent) {
                 root_ = node->parent;
+                data.root = Root();
             }
-            data.root = Root();
             port->Notify(data);
             return true;
         } else {
             if (node->parent->WhichKid(node) == Kid::LEFT) {
                 Node::RotateRight(node);
+                data.node_to_status[node] = Status::TOUCHED;
                 node = node->right;
+                data.node_to_status[node] = Status::CURRENT;
+                port->Notify(data);
             }
             Node::RotateLeft(node->parent);
             node->parent->color = Color::BLACK;
             node->parent->left->color = Color::RED;
             if (!node->parent->parent) {
                 root_ = node->parent;
+                data.root = Root();
             }
-            data.root = Root();
             port->Notify(data);
             return true;
         }
@@ -500,6 +514,7 @@ a            d      ------>       b             e
  */
     template<typename T>
     void RedBlackTree<T>::Node::RotateLeft(NodePtr d) {
+        // TODO: add notify
         NodePtr b = d->parent;
         NodePtr c = d->left;
         NodePtr pp = b->parent;
@@ -534,6 +549,7 @@ a     c                                          c     e
  */
     template<typename T>
     void RedBlackTree<T>::Node::RotateRight(NodePtr b) {
+        // TODO: add notify
         NodePtr d = b->parent;
         NodePtr c = b->right;
         NodePtr pp = d->parent;

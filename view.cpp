@@ -18,6 +18,20 @@
 #include <unistd.h>
 
 namespace DSVisualization {
+
+    namespace {
+        Qt::GlobalColor FromStatusToQTColor(DSVisualization::Status status) {
+            switch (status) {
+                case DSVisualization::Status::DEFAULT:
+                    return Qt::GlobalColor::transparent;
+                case DSVisualization::Status::TOUCHED:
+                    return Qt::GlobalColor::green;
+                case DSVisualization::Status::CURRENT:
+                    return Qt::GlobalColor::yellow;
+            }
+        }
+    }
+
     std::string GetTextAndClear(QLineEdit* button) {
         PRINT_WHERE_AM_I();
         assert(button != nullptr);
@@ -184,7 +198,7 @@ namespace DSVisualization {
         pen.setWidth(5);
         brush.setColor(node->color == Color::RED ? Qt::red : Qt::black);
         brush.setStyle(Qt::SolidPattern);
-        pen.setColor(node->status == Status::YA ? Qt::green : brush.color());
+        pen.setColor(FromStatusToQTColor(node->status));
         tree_view->scene()->addEllipse(node->x, node->y, r, r, pen, brush);
         auto* text = new QGraphicsTextItem(std::to_string(node->key).c_str());
         auto rect = text->boundingRect();
