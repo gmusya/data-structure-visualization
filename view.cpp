@@ -51,7 +51,7 @@ namespace DSVisualization {
         mainLayout = new QGridLayout;
         button1 = new QPushButton("Insert");
         button2 = new QPushButton("Erase");
-        button3 = new QPushButton("Find (not implemented)");
+        button3 = new QPushButton("Find");
         addressText1 = new QLineEdit;
         addressText2 = new QLineEdit;
         addressText3 = new QLineEdit;

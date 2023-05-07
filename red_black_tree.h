@@ -29,11 +29,12 @@ namespace DSVisualization {
         RedBlackTree();
         bool Erase(const T& value, std::shared_ptr<Observable<TreeInfo<int>>> port = nullptr);
         bool Insert(const T& value, std::shared_ptr<Observable<TreeInfo<int>>> port = nullptr);
+        bool Find(const T& value, std::shared_ptr<Observable<TreeInfo<int>>> port = nullptr);
         [[nodiscard]] size_t Size() const;
         [[nodiscard]] bool Empty() const;
         void Print(std::ostream& os) const;
         [[nodiscard]] std::string Str() const;
-        std::vector<T> Values() const;
+        [[nodiscard]] std::vector<T> Values() const;
         ~RedBlackTree();
 
 #ifdef INVARIANTS_CHECK
@@ -259,6 +260,13 @@ namespace DSVisualization {
         }
         return node;
     }
+
+    template<typename T>
+    bool RedBlackTree<T>::Find(const T& value, std::shared_ptr<Observable<TreeInfo<int>>> port) {
+        auto data = GetTreeInfo(*this);
+        return SearchValue(value, port, data) != nullptr;
+    }
+
 
     template<typename T>
     std::shared_ptr<typename RedBlackTree<T>::Node> RedBlackTree<T>::GetNearestLeaf(NodePtr node) {

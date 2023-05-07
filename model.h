@@ -28,6 +28,7 @@ namespace DSVisualization {
 
         void Insert(int value);
         void Erase(int value);
+        void Find(int value);
 
     private:
         RedBlackTree<int> values;

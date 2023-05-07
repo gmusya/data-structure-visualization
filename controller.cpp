@@ -34,7 +34,7 @@ namespace DSVisualization {
         } else if (query.query_type == TreeQueryType::ERASE) {
             model_ptr->Erase(query.value);
         } else if (query.query_type == TreeQueryType::FIND) {
-            // TODO: implement
+            model_ptr->Find(query.value);
         }
     }
 }// namespace DSVisualization

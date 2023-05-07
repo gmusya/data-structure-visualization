@@ -33,4 +33,9 @@ namespace DSVisualization {
         PRINT_WHERE_AM_I();
         values.Erase(value, observable_model_view);
     }
+
+    void Model::Find(int value) {
+        PRINT_WHERE_AM_I();
+        values.Find(value, observable_model_view);
+    }
 }// namespace DSVisualization
