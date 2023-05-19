@@ -3,9 +3,9 @@
 #include <cstdint>
 
 namespace DSVisualization {
-    enum TreeQueryType { DO_NOTHING, INSERT, ERASE, FIND,  };
+    enum class TreeQueryType { do_nothing, insert, erase, find };
     struct TreeQuery {
-        TreeQueryType query_type = DO_NOTHING;
+        TreeQueryType query_type = TreeQueryType::do_nothing;
         int value = 0;
     };
 }// namespace DSVisualization

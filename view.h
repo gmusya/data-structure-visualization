@@ -24,12 +24,16 @@ namespace DSVisualization {
         std::unique_ptr<DrawableNode> right;
     };
 
+    struct DrawableTree {
+        std::unique_ptr<DrawableNode> root;
+    };
+
     class View : public QGraphicsView {
     public:
         View();
 
         [[nodiscard]] Observer<RedBlackTree<int>::Data>* GetObserver();
-        void SubscribeToData(Observer<TreeQuery>* observer_view_controller);
+        void SubscribeToQuery(Observer<TreeQuery>* observer_view_controller);
 
     private:
         void OnNotifyFromModel(const RedBlackTree<int>::Data& value);
@@ -48,7 +52,7 @@ namespace DSVisualization {
                                                       RedBlackTree<int>::Node* node, float depth,
                                                       float& counter);
 
-        void DrawTree(const std::unique_ptr<DrawableNode>& root);
+        void DrawTree(const std::unique_ptr<DrawableTree>& tree);
         void DrawNode(const std::unique_ptr<DrawableNode>& node);
         void DrawEdgeBetweenNodes(const std::unique_ptr<DrawableNode>& parent, bool is_child_left);
         void RecursiveDraw(const std::unique_ptr<DrawableNode>& node);

@@ -1,16 +1,22 @@
 cmake_minimum_required(VERSION 3.22)
 project(data_structure_visualization)
 
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
 set(ASAN OFF)
+set(EXCEPTION_HANDLING OFF)
 
 if (ASAN)
     add_compile_options(-fsanitize=address)
     add_link_options(-fsanitize=address)
+endif ()
+
+if (NOT EXCEPTION_HANDLING)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions")
 endif ()
 
 add_executable(data_structure_visualization main.cpp application.cpp view.cpp controller.cpp)
@@ -19,9 +25,6 @@ if (MSVC)
 else ()
     target_compile_options(data_structure_visualization PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif ()
-
-
-include(GoogleTest)
 
 find_package(Qt5 COMPONENTS
         Core
@@ -34,6 +37,8 @@ target_link_libraries(data_structure_visualization
         Qt5::Gui
         Qt5::Widgets
         )
+
+include(GoogleTest)
 
 enable_testing()
 add_subdirectory(lib/googletest)

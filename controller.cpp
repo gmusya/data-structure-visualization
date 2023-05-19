@@ -31,12 +31,18 @@ namespace DSVisualization {
 
     void Controller::OnNotifyFromView(const TreeQuery& query) {
         PRINT_WHERE_AM_I();
-        if (query.query_type == TreeQueryType::INSERT) {
-            model_ptr_->Insert(query.value);
-        } else if (query.query_type == TreeQueryType::ERASE) {
-            model_ptr_->Erase(query.value);
-        } else if (query.query_type == TreeQueryType::FIND) {
-            model_ptr_->Find(query.value);
+        switch (query.query_type) {
+            case TreeQueryType::insert:
+                model_ptr_->Insert(query.value);
+                break;
+            case TreeQueryType::erase:
+                model_ptr_->Erase(query.value);
+                break;
+            case TreeQueryType::find:
+                model_ptr_->Find(query.value);
+                break;
+            default:
+                break;
         }
     }
 }// namespace DSVisualization
