@@ -14,12 +14,6 @@
 #include <QtWidgets>
 
 namespace DSVisualization {
-    template<typename Data>
-    class Observer;
-
-    template<typename Data>
-    class Observable;
-
     struct DrawableNode {
         float x;
         float y;
@@ -35,15 +29,15 @@ namespace DSVisualization {
         View();
 
         [[nodiscard]] Observer<RedBlackTree<int>::Data>* GetObserver();
-        void OnNotifyFromModel(const RedBlackTree<int>::Data& value);
         void SubscribeToData(Observer<TreeQuery>* observer_view_controller);
 
     private:
+        void OnNotifyFromModel(const RedBlackTree<int>::Data& value);
         void AddWidgetsToLayout();
 
-        void SetVisibleButtons(bool flag);
-        void HideButtons();
-        void ShowButtons();
+        void SetEnabledButtons(bool flag);
+        void DisableButtons();
+        void EnableButtons();
 
         void OnInsertButtonPushed();
         void OnEraseButtonPushed();
@@ -69,6 +63,8 @@ namespace DSVisualization {
         float tree_width_ = 0;
         float current_width_ = default_width;
         float current_node_diameter_ = default_node_diameter;
+        int trees_to_show_counter_ = 0;
+        TreeQuery query_;
         std::unique_ptr<QGridLayout> main_layout_;
         std::unique_ptr<QPushButton> insert_button_;
         std::unique_ptr<QPushButton> erase_button_;
@@ -79,8 +75,6 @@ namespace DSVisualization {
         std::unique_ptr<QGraphicsScene> tree_scene_;
         std::unique_ptr<QGraphicsView> tree_view_;
         std::unique_ptr<QGraphicsScene> main_scene_;
-        int trees_to_show_counter_ = 0;
-        TreeQuery query_;
         Observer<RedBlackTree<int>::Data> observer_model_view_;
         Observable<TreeQuery> observable_view_controller_;
     };

@@ -646,7 +646,7 @@ a            d      ------>       b             e
         SetNodeStatus(d, rotate, &current_tree_info);
         SetNodeStatus(d->left.get(), rotate, &current_tree_info);
         SetNodeStatus(d->right.get(), rotate, &current_tree_info);
-        Send();
+        Send(current_tree_info);
         NodePtr old_root = root_.release();
         d->left.release();
         b->right.release();
@@ -696,7 +696,7 @@ a     c                                          c     e
         SetNodeStatus(b->left.get(), rotate, &current_tree_info);
         SetNodeStatus(b->right.get(), rotate, &current_tree_info);
         SetNodeStatus(d->right.get(), rotate, &current_tree_info);
-        Send();
+        Send(current_tree_info);
         NodePtr old_root = root_.release();
         d->left.release();
         b->right.release();
@@ -774,15 +774,15 @@ a     c                                          c     e
             depths.push_back(black_depth + 1);
             return;
         }
-        if (black_depth == 0 && node->color == Color::RED) {
+        if (black_depth == 0 && node->color == Color::red) {
             throw std::runtime_error("Root must be black");
         }
-        if (node->color == Color::BLACK) {
+        if (node->color == Color::black) {
             ++black_depth;
         } else {
-            if ((node->left && node->left->color == Color::RED) ||
-                (node->right && node->right->color == Color::RED)) {
-                throw std::runtime_error("Red node cannot have red kid");
+            if ((node->left && node->left->color == Color::red) ||
+                (node->right && node->right->color == Color::red)) {
+                throw std::runtime_error("red node cannot have red kid");
             }
         }
         CheckInvariants(node->left.get(), values, depths, black_depth);

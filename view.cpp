@@ -87,7 +87,7 @@ namespace DSVisualization {
                            [this, result = std::move(result)]() {
                                this->DrawTree(result);
                                if (--trees_to_show_counter_ == 0) {
-                                   ShowButtons();
+                                   EnableButtons();
                                }
                            });
     }
@@ -108,24 +108,24 @@ namespace DSVisualization {
         main_layout_->addWidget(find_button_.get(), 2, 2);
     }
 
-    void View::SetVisibleButtons(bool flag) {
+    void View::SetEnabledButtons(bool flag) {
         PRINT_WHERE_AM_I();
-        insert_button_->setVisible(flag);
-        erase_button_->setVisible(flag);
-        find_button_->setVisible(flag);
-        insert_line_edit_->setVisible(flag);
-        erase_line_edit_->setVisible(flag);
-        find_line_edit_->setVisible(flag);
+        insert_button_->setEnabled(flag);
+        erase_button_->setEnabled(flag);
+        find_button_->setEnabled(flag);
+        insert_line_edit_->setEnabled(flag);
+        erase_line_edit_->setEnabled(flag);
+        find_line_edit_->setEnabled(flag);
     }
 
-    void View::HideButtons() {
+    void View::DisableButtons() {
         PRINT_WHERE_AM_I();
-        SetVisibleButtons(false);
+        SetEnabledButtons(false);
     }
 
-    void View::ShowButtons() {
+    void View::EnableButtons() {
         PRINT_WHERE_AM_I();
-        SetVisibleButtons(true);
+        SetEnabledButtons(true);
     }
 
     void View::OnInsertButtonPushed() {
@@ -188,7 +188,7 @@ namespace DSVisualization {
 
     void View::HandlePushButton(TreeQueryType query_type, const std::string& text) {
         PRINT_WHERE_AM_I();
-        HideButtons();
+        DisableButtons();
         std::variant<int, std::string> value = string_to_int(text);
         if (value.index() == 0) {
             query_ = {query_type, std::get<int>(value)};
@@ -198,7 +198,7 @@ namespace DSVisualization {
             QMessageBox::critical(nullptr, "Error", std::get<std::string>(value).c_str());
         }
         if (trees_to_show_counter_ == 0) {
-            ShowButtons();
+            EnableButtons();
         }
     }
 
