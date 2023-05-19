@@ -1,45 +1,58 @@
 #pragma once
 
-#include <functional>
-
 namespace DSVisualization {
-    template<typename Data>
+    template<typename T>
     class Observable;
 
-    template<typename Data>
+    template<class T>
     class Observer {
+        friend Observable<T>;
+
     public:
-        explicit Observer(std::function<void(const Data& data)> on_subscribe,
-                          std::function<void(const Data& data)> on_notify,
-                          std::function<void(const Data& data)> on_unsubscribe) {
-            this->on_notify = on_notify;
-            this->on_subscribe = on_subscribe;
-            this->on_unsubscribe = on_unsubscribe;
+        template<class Tt1, class Tt2, class Tt3>
+        Observer(Tt1&& on_subscribe, Tt2&& on_notify, Tt3&& on_unsubscribe)
+            : on_subscribe_(std::forward<Tt1>(on_subscribe)),
+              on_notify_(std::forward<Tt2>(on_notify)),
+              on_unsubscribe_(std::forward<Tt3>(on_unsubscribe)) {
         }
 
-        explicit Observer(std::function<void(const Data& data)> on_notify) {
-            static std::function<void(const Data& data)> do_nothing = [](const Data&) {
-            };
-            this->on_notify = on_notify;
-            this->on_subscribe = do_nothing;
-            this->on_unsubscribe = do_nothing;
+        template<class Tt2>
+        explicit Observer(Tt2&& on_notify)
+            : on_subscribe_(do_nothing), on_notify_(std::forward<Tt2>(on_notify)),
+              on_unsubscribe_(do_nothing) {
+        }
+        Observer(const Observer&) = delete;
+        Observer& operator=(const Observer&) = delete;
+        Observer(Observer&&) = delete;
+        Observer& operator=(Observer&&) = delete;
+
+        ~Observer() {
+            Unsubscribe();
         }
 
-        void OnNotify(const Data& data) {
-            on_notify(data);
+        void Unsubscribe() {
+            if (!IsSubscribed()) {
+                return;
+            }
+            observable_->Detach(this);
+            observable_ = nullptr;
         }
 
-        void OnUnsubscribe(const Data& data) {
-            on_unsubscribe(data);
-        }
-
-        void OnSubscribe(const Data& data) {
-            on_subscribe(data);
+        [[nodiscard]] bool IsSubscribed() const {
+            return observable_;
         }
 
     private:
-        std::function<void(const Data& data)> on_notify;
-        std::function<void(const Data& data)> on_subscribe;
-        std::function<void(const Data& data)> on_unsubscribe;
+        void SetObservable(Observable<T>* observable) {
+            observable_ = observable;
+        }
+
+        static void do_nothing(T){};
+        using Action = std::function<void(T)>;
+
+        Observable<T>* observable_ = nullptr;
+        Action on_subscribe_ = do_nothing;
+        Action on_notify_ = do_nothing;
+        Action on_unsubscribe_ = do_nothing;
     };
 }// namespace DSVisualization

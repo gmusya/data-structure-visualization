@@ -2,8 +2,10 @@
 
 #include "observable.h"
 #include "observer.h"
+#include "utility.h"
 
 #include <cassert>
+#include <iostream>
 #include <map>
 #include <memory>
 #include <sstream>
@@ -12,13 +14,12 @@
 #ifdef INVARIANTS_CHECK
 #include <algorithm>
 #include <optional>
-#include <vector>
 #endif
 
 namespace DSVisualization {
-    enum Color { RED, BLACK };
-    enum Status { DEFAULT, TOUCHED, CURRENT, TO_DELETE, ROTATE };
-    enum Kid { LEFT, RIGHT };
+    enum Color { red, black };
+    enum Status { initial, touched, current, to_delete, rotate };
+    enum Kid { left, right, non };
 
     template<typename T>
     struct TreeInfo;
@@ -26,58 +27,53 @@ namespace DSVisualization {
     template<typename T>
     class RedBlackTree {
     public:
-        class Node;
-        using NodePtr = std::shared_ptr<Node>;
+        struct Node;
+        using NodePtr = Node*;
 
         RedBlackTree();
-        ~RedBlackTree();
 
-        bool Insert(const T& value, std::shared_ptr<Observable<TreeInfo<T>>> port = nullptr);
-        bool Erase(const T& value, std::shared_ptr<Observable<TreeInfo<T>>> port = nullptr);
-        bool Find(const T& value, std::shared_ptr<Observable<TreeInfo<T>>> port = nullptr);
+        using Data = TreeInfo<T>;
+        using ObserverModelViewPtr = Observer<Data>*;
+
+        void SubscribeToData(ObserverModelViewPtr observer) {
+            port_.Subscribe(observer);
+        }
+
+        bool Insert(const T& value);
+        bool Erase(const T& value);
+        bool Find(const T& value);
 
         [[nodiscard]] size_t Size() const;
         [[nodiscard]] bool Empty() const;
 
-        void Print(std::ostream& os) const;
-        [[nodiscard]] std::string Str() const;
-        [[nodiscard]] std::vector<T> Values() const;
-
-        NodePtr FirstNode();
+        NodePtr FirstNode() const;
         NodePtr Root();
 
+        void RotateLeft(typename RedBlackTree<T>::Node* d, RedBlackTree<T>* tree);
+
+        void RotateRight(typename RedBlackTree<T>::Node* b, RedBlackTree<T>* tree);
+
     private:
-        NodePtr SearchValue(const T& value, const std::shared_ptr<Observable<TreeInfo<T>>>& port,
-                            TreeInfo<T>& tree_info);
-        void UpdateRoot();
+        NodePtr SearchValue(const T& value, TreeInfo<T>& tree_info);
+        void Send(TreeInfo<T>& data);
+
 
     public:
-
 #ifdef INVARIANTS_CHECK
         [[nodiscard]] bool CheckInvariants() const;
 #endif
 
-        class Node {
+        struct Node {
         public:
-            explicit Node(const T& value1);
-            Node(const T& value1, NodePtr parent1, enum Color color1);
-
             NodePtr GetGrandParent();
             NodePtr GetUncle();
-            static NodePtr GetRoot(NodePtr node);
-            static NodePtr Next(NodePtr node);
 
             Kid WhichKid(NodePtr kid);
 
-            static enum Color Color(NodePtr node);
 
-            static void RotateLeft(NodePtr d, const std::shared_ptr<Observable<TreeInfo<T>>>& port,
-                                   RedBlackTree<T>* tree);
-            static void RotateRight(NodePtr b, const std::shared_ptr<Observable<TreeInfo<T>>>& port,
-                                    RedBlackTree<T>* tree);
-
-            static void Unlink(NodePtr node);
-            static void Values(NodePtr node, std::vector<T>& values);
+            static NodePtr GetRoot(NodePtr node);
+            static const Node* Next(const Node* node);
+            static Color GetColor(NodePtr node);
 
             void Print(std::ostream& os, int depth) const;
 
@@ -85,348 +81,386 @@ namespace DSVisualization {
             static void CheckInvariants(NodePtr node, std::vector<T>& values,
                                         std::vector<int32_t>& depths, int32_t black_depth);
 #endif
-            NodePtr parent;
-            NodePtr left;
-            NodePtr right;
+            Node* parent;
+            std::unique_ptr<Node> left;
+            std::unique_ptr<Node> right;
             T value;
             enum Color color;
-
-            friend RedBlackTree<T>;
         };
 
-        NodePtr root_;
-        size_t size_;
+        class ConstIterator {
+        public:
+            using iterator_category = std::forward_iterator_tag;
+            using value_type = T;
+
+            explicit ConstIterator(const Node* node) : node_(node) {
+            }
+
+            ConstIterator& operator++() {
+                assert(node_);
+                node_ = Node::Next(node_);
+                return *this;
+            }
+
+            ConstIterator operator++(int) {
+                assert(node_);
+                return ConstIterator(Node::Next(node_));
+            }
+
+            bool operator!=(const ConstIterator& other) const {
+                return node_ != other.node_;
+            }
+
+            const T& operator*() {
+                return node_->value;
+            }
+
+            const T* operator->() {
+                return &node_->value;
+            }
+
+        private:
+            const Node* node_;
+        };
+
+        ConstIterator begin() const {
+            return ConstIterator(FirstNode());
+        }
+
+        ConstIterator end() const {
+            return ConstIterator(nullptr);
+        }
+
+        friend std::ostream& operator<<(std::ostream& os, const RedBlackTree<T>& t) {
+            if (!t.root_) {
+                return os << "Empty\n";
+            }
+            t.root_->Print(os, 0);
+            return os;
+        }
+
+    private:
+        std::unique_ptr<Node> root_ = nullptr;
+        Observable<TreeInfo<T>> port_;
+        TreeInfo<T> tree_info_;
+        size_t size_ = 0;
         NodePtr GetNearestLeaf(NodePtr node);
     };
 
     template<typename T>
     struct TreeInfo {
-    public:
-        using NodePtr = std::shared_ptr<typename RedBlackTree<T>::Node>;
-        NodePtr root;
+        using NodePtr = typename RedBlackTree<T>::Node*;
+        size_t tree_size = 0;
+        NodePtr root = nullptr;
         std::map<NodePtr, Status> node_to_status;
     };
 
     template<typename T>
     TreeInfo<T> GetTreeInfo(RedBlackTree<T>& red_black_tree) {
-        using NodePtr = std::shared_ptr<typename RedBlackTree<T>::Node>;
-
         TreeInfo<T> tree_info;
-        for (NodePtr node = red_black_tree.FirstNode(); node != nullptr;
-             node = RedBlackTree<T>::Node::Next(node)) {
-            tree_info.node_to_status[node] = DEFAULT;
-        }
         tree_info.root = red_black_tree.Root();
         return tree_info;
     }
 
     template<typename T>
-    RedBlackTree<T>::RedBlackTree() {
-        root_ = nullptr;
-        size_ = 0;
+    RedBlackTree<T>::RedBlackTree()
+        : port_([this]() {
+              return this->tree_info_;
+          }) {
+        PRINT_WHERE_AM_I();
     }
 
     template<typename T>
-    RedBlackTree<T>::~RedBlackTree() {
-        Node::Unlink(root_);
+    void RedBlackTree<T>::Send(TreeInfo<T>& data) {
+        data.root = root_.get();
+        data.tree_size = size_;
+        tree_info_ = data;
+        port_.Notify();
     }
 
-    namespace {
-        template<typename T>
-        void Send(const std::shared_ptr<Observable<TreeInfo<T>>>& port, const TreeInfo<T>& data) {
-            if (!port) {
-                return;
-            }
-            port->Notify(data);
-        }
-    }// namespace
-
     template<typename T>
-    bool RedBlackTree<T>::Insert(const T& value, std::shared_ptr<Observable<TreeInfo<T>>> port) {
+    bool RedBlackTree<T>::Insert(const T& value) {
         auto data = GetTreeInfo(*this);
         if (!root_) {
-            root_ = std::make_shared<Node>(value);
+            root_ = std::unique_ptr<Node>(new Node{nullptr, nullptr, nullptr, value, black});
             ++size_;
             {
-                data.node_to_status[root_] = Status::CURRENT;
+                data.node_to_status[root_.get()] = Status::current;
                 data.root = Root();
-                Send(port, data);
-                data.node_to_status[root_] = Status::TOUCHED;
-                Send(port, data);
+                Send(data);
+                data.node_to_status[root_.get()] = Status::touched;
+                Send(data);
             }
             return true;
         }
-        NodePtr node = root_;
-        data.node_to_status[root_] = Status::CURRENT;
-        Send(port, data);
+        NodePtr node = root_.get();
+        data.node_to_status[root_.get()] = Status::current;
+        Send(data);
         NodePtr parent = nullptr;
         while (node) {
             parent = node;
             if (value < node->value) {
-                data.node_to_status[node] = Status::TOUCHED;
-                node = node->left;
-                data.node_to_status[node] = Status::CURRENT;
+                data.node_to_status[node] = Status::touched;
+                node = node->left.get();
+                data.node_to_status[node] = Status::current;
             } else if (value == node->value) {
-                Send(port, data);
+                Send(data);
                 return false;
             } else {
-                data.node_to_status[node] = Status::TOUCHED;
-                node = node->right;
-                data.node_to_status[node] = Status::CURRENT;
+                data.node_to_status[node] = Status::touched;
+                node = node->right.get();
+                data.node_to_status[node] = Status::current;
             }
-            Send(port, data);
+            Send(data);
         }
 
         ++size_;
-        node = std::make_shared<Node>(value, parent, Color::RED);
-        data.node_to_status[node] = Status::CURRENT;
-        (value < parent->value ? parent->left : parent->right) = node;
-        Send(port, data);
+        node = new Node{parent, nullptr, nullptr, value, Color::red};
+        data.node_to_status[node] = Status::current;
+        (value < parent->value ? parent->left : parent->right) = std::unique_ptr<Node>(node);
+        Send(data);
         while (true) {
-            if (!parent || parent->color == Color::BLACK) {
+            if (!parent || parent->color == Color::black) {
                 if (!parent) {
-                    node->color = Color::BLACK;
+                    node->color = Color::black;
                 }
                 data.root = Root();
-                Send(port, data);
-                data.node_to_status[node] = Status::TOUCHED;
-                Send(port, data);
+                Send(data);
+                data.node_to_status[node] = Status::touched;
+                Send(data);
                 return true;
             }
-            if (node->GetUncle() && node->GetUncle()->color == Color::RED) {
-                node->GetUncle()->color = Color::BLACK;
-                node->parent->color = Color::BLACK;
-                node->parent->parent->color = Color::RED;
-                data.node_to_status[node] = Status::TOUCHED;
+            if (node->GetUncle() && node->GetUncle()->color == Color::red) {
+                node->GetUncle()->color = Color::black;
+                node->parent->color = Color::black;
+                node->parent->parent->color = Color::red;
+                data.node_to_status[node] = Status::touched;
                 node = node->parent->parent;
-                data.node_to_status[node] = Status::CURRENT;
-                Send(port, data);
+                data.node_to_status[node] = Status::current;
+                Send(data);
                 parent = node->parent;
             } else {
                 break;
             }
         }
-        if (node->GetGrandParent()->WhichKid(node->parent) == Kid::LEFT) {
-            if (node->parent->WhichKid(node) == Kid::RIGHT) {
-                Node::RotateLeft(node, port, this);
-                data.node_to_status[node] = Status::TOUCHED;
-                node = node->left;
-                data.node_to_status[node] = Status::CURRENT;
-                Send(port, data);
+        if (node->GetGrandParent()->WhichKid(node->parent) == Kid::left) {
+            if (node->parent->WhichKid(node) == Kid::right) {
+                RotateLeft(node, this);
+                data.node_to_status[node] = Status::touched;
+                node = node->left.get();
+                data.node_to_status[node] = Status::current;
+                Send(data);
             }
-            Node::RotateRight(node->parent, port, this);
-            node->parent->color = Color::BLACK;
-            node->parent->right->color = Color::RED;
+            RotateRight(node->parent, this);
+            node->parent->color = Color::black;
+            node->parent->right->color = Color::red;
             if (!node->parent->parent) {
-                root_ = node->parent;
                 data.root = Root();
             }
-            Send(port, data);
-            data.node_to_status[node] = Status::TOUCHED;
-            Send(port, data);
+            Send(data);
+            data.node_to_status[node] = Status::touched;
+            Send(data);
             return true;
         } else {
-            if (node->parent->WhichKid(node) == Kid::LEFT) {
-                Node::RotateRight(node, port, this);
-                data.node_to_status[node] = Status::TOUCHED;
-                node = node->right;
-                data.node_to_status[node] = Status::CURRENT;
-                Send(port, data);
+            if (node->parent->WhichKid(node) == Kid::left) {
+                RotateRight(node, this);
+                data.node_to_status[node] = Status::touched;
+                node = node->right.get();
+                data.node_to_status[node] = Status::current;
+                Send(data);
             }
-            Node::RotateLeft(node->parent, port, this);
-            node->parent->color = Color::BLACK;
-            node->parent->left->color = Color::RED;
+            RotateLeft(node->parent, this);
+            node->parent->color = Color::black;
+            node->parent->left->color = Color::red;
             if (!node->parent->parent) {
-                root_ = node->parent;
                 data.root = Root();
             }
-            Send(port, data);
-            data.node_to_status[node] = Status::TOUCHED;
-            Send(port, data);
+            Send(data);
+            data.node_to_status[node] = Status::touched;
+            Send(data);
             return true;
         }
     }
 
     template<typename T>
-    bool RedBlackTree<T>::Erase(const T& value, std::shared_ptr<Observable<TreeInfo<T>>> port) {
+    bool RedBlackTree<T>::Erase(const T& value) {
         auto data = GetTreeInfo(*this);
-        NodePtr node = SearchValue(value, port, data);
+        NodePtr node = SearchValue(value, data);
         if (!node) {
             return false;
         }
-        data.node_to_status[node] = Status::TO_DELETE;
-        Send(port, data);
+        data.node_to_status[node] = Status::to_delete;
+        Send(data);
         --size_;
         if (NodePtr node_to_delete = GetNearestLeaf(node)) {
-            data.node_to_status[node_to_delete] = Status::CURRENT;
-            Send(port, data);
-            data.node_to_status[node_to_delete] = Status::TO_DELETE;
-            data.node_to_status[node] = Status::CURRENT;
-            Send(port, data);
+            data.node_to_status[node_to_delete] = Status::current;
+            Send(data);
+            data.node_to_status[node_to_delete] = Status::to_delete;
+            data.node_to_status[node] = Status::current;
+            Send(data);
             node->value = node_to_delete->value;
-            data.node_to_status[node] = Status::TOUCHED;
-            Send(port, data);
+            data.node_to_status[node] = Status::touched;
+            Send(data);
             node = node_to_delete;
         }
         if (!node->parent) {
             root_ = nullptr;
-            data.root = root_;
+            data.root = nullptr;
             return true;
         }
         Kid kid = node->parent->WhichKid(node);
-        (kid == Kid::LEFT ? node->parent->left : node->parent->right) = node->right;
-        if (node->right) {
-            node->right->parent = node->parent;
+        auto ptr = node->right.release();
+        (kid == Kid::left ? node->parent->left : node->parent->right).release();
+        (kid == Kid::left ? node->parent->left : node->parent->right).reset(ptr);
+        if (ptr) {
+            ptr->parent = node->parent;
         }
-        if (node->color == Color::RED) {
-            node->right = node->left = node->parent = nullptr;
-            Send(port, data);
+        std::unique_ptr<Node> tmp(node);
+        if (node->color == Color::red) {
+            Send(data);
             return true;
         }
         NodePtr parent = node->parent;
         {
-            NodePtr nr = node->right;
-            node->right = node->left = node->parent = nullptr;
+            NodePtr nr = ptr;
+            assert(node->right.get() == nullptr);
+            assert(node->left.get() == nullptr);
+            node->left.release();
+            node->parent = nullptr;
             node = nr;
-            data.node_to_status[node] = Status::CURRENT;
-            Send(port, data);
+            data.node_to_status[node] = Status::current;
+            Send(data);
         }
         while (true) {
             if (!node) {
                 kid = parent->WhichKid(node);
-                NodePtr sibling = (kid == Kid::LEFT ? parent->right : parent->left);
-                if (sibling->color == Color::RED) {
-                    parent->color = Color::RED;
-                    sibling->color = Color::BLACK;
-                    (kid == Kid::LEFT ? Node::RotateLeft(sibling, port, this)
-                                      : Node::RotateRight(sibling, port, this));
-                    sibling = (kid == Kid::LEFT ? parent->right : parent->left);
-                    UpdateRoot();
-                    data.root = root_;
-                    Send(port, data);
+                NodePtr sibling = (kid == Kid::left ? parent->right : parent->left).get();
+                if (sibling->color == Color::red) {
+                    parent->color = Color::red;
+                    sibling->color = Color::black;
+                    (kid == Kid::left ? RotateLeft(sibling, this) : RotateRight(sibling, this));
+                    sibling = (kid == Kid::left ? parent->right : parent->left).get();
+                    data.root = root_.get();
+                    Send(data);
                 }
-                if (parent->color == Color::BLACK &&
-                    (!sibling->left || sibling->left->color == Color::BLACK) &&
-                    (!sibling->right || sibling->right->color == Color::BLACK)) {
-                    sibling->color = Color::RED;
+                if (parent->color == Color::black &&
+                    (!sibling->left || sibling->left->color == Color::black) &&
+                    (!sibling->right || sibling->right->color == Color::black)) {
+                    sibling->color = Color::red;
                     node = parent;
                     parent = node->parent;
-                    data.node_to_status[node] = Status::CURRENT;
-                    Send(port, data);
+                    data.node_to_status[node] = Status::current;
+                    Send(data);
                     continue;
                 }
-                if (parent->color == Color::RED &&
-                    (!sibling->left || sibling->left->color == Color::BLACK) &&
-                    (!sibling->right || sibling->right->color == Color::BLACK)) {
-                    parent->color = Color::BLACK;
-                    sibling->color = Color::RED;
-                    Send(port, data);
+                if (parent->color == Color::red &&
+                    (!sibling->left || sibling->left->color == Color::black) &&
+                    (!sibling->right || sibling->right->color == Color::black)) {
+                    parent->color = Color::black;
+                    sibling->color = Color::red;
+                    Send(data);
                     return true;
                 }
-                if ((kid == Kid::LEFT && Node::Color(sibling->left) == Color::RED &&
-                     Node::Color(sibling->right) == Color::BLACK) ||
-                    (kid == Kid::RIGHT && Node::Color(sibling->left) == Color::BLACK &&
-                     Node::Color(sibling->right) == Color::RED)) {
-                    if (kid == Kid::LEFT) {
-                        Node::RotateRight(sibling->left, port, this);
-                        Send(port, data);
+                if ((kid == Kid::left && Node::GetColor(sibling->left.get()) == Color::red &&
+                     Node::GetColor(sibling->right.get()) == Color::black) ||
+                    (kid == Kid::right && Node::GetColor(sibling->left.get()) == Color::black &&
+                     Node::GetColor(sibling->right.get()) == Color::red)) {
+                    if (kid == Kid::left) {
+                        RotateRight(sibling->left.get(), this);
+                        Send(data);
                     } else {
-                        Node::RotateLeft(sibling->right, port, this);
-                        Send(port, data);
+                        RotateLeft(sibling->right.get(), this);
+                        Send(data);
                     }
-                    sibling->color = Color::RED;
-                    sibling->parent->color = Color::BLACK;
+                    sibling->color = Color::red;
+                    sibling->parent->color = Color::black;
                     sibling = sibling->parent;
-                    Send(port, data);
+                    Send(data);
                 }
                 enum Color color = parent->color;
-                if (kid == Kid::LEFT) {
-                    Node::RotateLeft(sibling, port, this);
-                    Send(port, data);
+                if (kid == Kid::left) {
+                    RotateLeft(sibling, this);
+                    Send(data);
                 } else {
-                    Node::RotateRight(sibling, port, this);
-                    Send(port, data);
+                    RotateRight(sibling, this);
+                    Send(data);
                 }
-                parent->color = Color::BLACK;
-                (kid == Kid::LEFT ? sibling->right : sibling->left)->color = Color::BLACK;
+                parent->color = Color::black;
+                (kid == Kid::left ? sibling->right : sibling->left)->color = Color::black;
                 parent->parent->color = color;
-                UpdateRoot();
-                data.root = root_;
-                Send(port, data);
+                data.root = root_.get();
+                Send(data);
                 return true;
             }
             if (!node->parent) {
-                Send(port, data);
+                Send(data);
                 return true;
             }
             kid = node->parent->WhichKid(node);
-            NodePtr sibling = (kid == Kid::LEFT ? node->parent->right : node->parent->left);
-            if (sibling->color == Color::RED) {
-                node->parent->color = Color::RED;
-                sibling->color = Color::BLACK;
-                (kid == Kid::LEFT ? Node::RotateLeft(sibling, port, this)
-                                  : Node::RotateRight(sibling, port, this));
-                sibling = (kid == Kid::LEFT ? node->parent->right : node->parent->left);
-                Send(port, data);
+            NodePtr sibling = (kid == Kid::left ? node->parent->right : node->parent->left).get();
+            if (sibling->color == Color::red) {
+                node->parent->color = Color::red;
+                sibling->color = Color::black;
+                (kid == Kid::left ? RotateLeft(sibling, this) : RotateRight(sibling, this));
+                sibling = (kid == Kid::left ? node->parent->right : node->parent->left).get();
+                Send(data);
             }
-            if (node->parent->color == Color::BLACK &&
-                (!sibling->left || sibling->left->color == Color::BLACK) &&
-                (!sibling->right || sibling->right->color == Color::BLACK)) {
-                sibling->color = Color::RED;
-                data.node_to_status[node] = Status::TOUCHED;
+            if (node->parent->color == Color::black &&
+                (!sibling->left || sibling->left->color == Color::black) &&
+                (!sibling->right || sibling->right->color == Color::black)) {
+                sibling->color = Color::red;
+                data.node_to_status[node] = Status::touched;
                 node = node->parent;
-                data.node_to_status[node] = Status::CURRENT;
-                Send(port, data);
+                data.node_to_status[node] = Status::current;
+                Send(data);
                 continue;
             }
-            if (node->parent->color == Color::RED &&
-                (!sibling->left || sibling->left->color == Color::BLACK) &&
-                (!sibling->right || sibling->right->color == Color::BLACK)) {
-                node->parent->color = Color::BLACK;
-                sibling->color = Color::RED;
-                UpdateRoot();
-                data.root = root_;
-                Send(port, data);
+            if (node->parent->color == Color::red &&
+                (!sibling->left || sibling->left->color == Color::black) &&
+                (!sibling->right || sibling->right->color == Color::black)) {
+                node->parent->color = Color::black;
+                sibling->color = Color::red;
+                data.root = root_.get();
+                Send(data);
                 return true;
             }
-            if ((kid == Kid::LEFT && Node::Color(sibling->left) == Color::RED &&
-                 Node::Color(sibling->right) == Color::BLACK) ||
-                (kid == Kid::RIGHT && Node::Color(sibling->left) == Color::BLACK &&
-                 Node::Color(sibling->right) == Color::RED)) {
-                if (kid == Kid::LEFT) {
-                    Node::RotateRight(sibling->left, port, this);
-                    Send(port, data);
+            if ((kid == Kid::left && Node::GetColor(sibling->left.get()) == Color::red &&
+                 Node::GetColor(sibling->right.get()) == Color::black) ||
+                (kid == Kid::right && Node::GetColor(sibling->left.get()) == Color::black &&
+                 Node::GetColor(sibling->right.get()) == Color::red)) {
+                if (kid == Kid::left) {
+                    RotateRight(sibling->left.get(), this);
+                    Send(data);
                 } else {
-                    Node::RotateLeft(sibling->right, port, this);
-                    Send(port, data);
+                    RotateLeft(sibling->right.get(), this);
+                    Send(data);
                 }
-                sibling->color = Color::RED;
-                sibling->parent->color = Color::BLACK;
+                sibling->color = Color::red;
+                sibling->parent->color = Color::black;
                 sibling = sibling->parent;
-                Send(port, data);
+                Send(data);
             }
             enum Color color = node->parent->color;
-            if (kid == Kid::LEFT) {
-                Node::RotateLeft(sibling, port, this);
-                Send(port, data);
+            if (kid == Kid::left) {
+                RotateLeft(sibling, this);
+                Send(data);
             } else {
-                Node::RotateRight(sibling, port, this);
-                Send(port, data);
+                RotateRight(sibling, this);
+                Send(data);
             }
-            node->parent->color = Color::BLACK;
-            (kid == Kid::LEFT ? sibling->right : sibling->left)->color = Color::BLACK;
+            node->parent->color = Color::black;
+            (kid == Kid::left ? sibling->right : sibling->left)->color = Color::black;
             node->parent->parent->color = color;
-            UpdateRoot();
-            data.root = root_;
-            Send(port, data);
+            data.root = root_.get();
+            Send(data);
             return true;
         }
     }
 
     template<typename T>
-    bool RedBlackTree<T>::Find(const T& value, std::shared_ptr<Observable<TreeInfo<T>>> port) {
+    bool RedBlackTree<T>::Find(const T& value) {
         auto data = GetTreeInfo(*this);
-        return SearchValue(value, port, data) != nullptr;
+        return SearchValue(value, data) != nullptr;
     }
 
     template<typename T>
@@ -440,114 +474,63 @@ namespace DSVisualization {
     }
 
     template<typename T>
-    void RedBlackTree<T>::Print(std::ostream& os) const {
-        if (!root_) {
-            os << "Empty\n";
-            return;
-        }
-        root_->Print(os, 0);
-    }
-
-    template<typename T>
-    std::string RedBlackTree<T>::Str() const {
-        std::stringstream ss;
-        Print(ss);
-        return ss.str();
-    }
-
-    template<typename T>
-    std::vector<T> RedBlackTree<T>::Values() const {
-        std::vector<T> values;
-        Node::Values(root_, values);
-        return values;
-    }
-
-    template<typename T>
-    std::shared_ptr<typename RedBlackTree<T>::Node> RedBlackTree<T>::FirstNode() {
+    typename RedBlackTree<T>::Node* RedBlackTree<T>::FirstNode() const {
         if (!root_) {
             return nullptr;
         }
-        NodePtr node = root_;
+        NodePtr node = root_.get();
         while (node->left) {
-            node = node->left;
+            node = node->left.get();
         }
         return node;
     }
 
     template<typename T>
-    std::shared_ptr<typename RedBlackTree<T>::Node> RedBlackTree<T>::Root() {
-        return root_;
+    typename RedBlackTree<T>::Node* RedBlackTree<T>::Root() {
+        return root_.get();
     }
 
     template<typename T>
-    std::shared_ptr<typename RedBlackTree<T>::Node>
-    RedBlackTree<T>::SearchValue(const T& value,
-                                 const std::shared_ptr<Observable<TreeInfo<T>>>& port,
-                                 TreeInfo<T>& tree_info) {
-        NodePtr node = root_;
-        tree_info.node_to_status[node] = Status::CURRENT;
-        Send(port, tree_info);
+    typename RedBlackTree<T>::Node* RedBlackTree<T>::SearchValue(const T& value,
+                                                                 TreeInfo<T>& tree_info) {
+        NodePtr node = root_.get();
+        tree_info.node_to_status[node] = Status::current;
+        Send(tree_info);
         while (node) {
-            tree_info.node_to_status[node] = Status::TOUCHED;
+            tree_info.node_to_status[node] = Status::touched;
             if (value < node->value) {
-                node = node->left;
+                node = node->left.get();
             } else if (value == node->value) {
                 break;
             } else {
-                node = node->right;
+                node = node->right.get();
             }
-            tree_info.node_to_status[node] = Status::CURRENT;
-            Send(port, tree_info);
+            tree_info.node_to_status[node] = Status::current;
+            Send(tree_info);
         }
         return node;
     }
 
     template<typename T>
-    void RedBlackTree<T>::UpdateRoot() {
-        while (root_ && root_->parent) {
-            root_ = root_->parent;
-        }
-    }
-
-    template<typename T>
-    std::shared_ptr<typename RedBlackTree<T>::Node> RedBlackTree<T>::GetNearestLeaf(NodePtr node) {
-        NodePtr node_to_delete = node->right;
+    typename RedBlackTree<T>::Node* RedBlackTree<T>::GetNearestLeaf(NodePtr node) {
+        NodePtr node_to_delete = node->right.get();
         if (node_to_delete) {
             while (node_to_delete->left) {
-                node_to_delete = node_to_delete->left;
+                node_to_delete = node_to_delete->left.get();
             }
         } else {
             if (node->left) {
-                node_to_delete = node->left;
+                node_to_delete = node->left.get();
                 while (node_to_delete->right) {
-                    node_to_delete = node_to_delete->right;
+                    node_to_delete = node_to_delete->right.get();
                 }
             }
         }
         return node_to_delete;
     }
 
-
     template<typename T>
-    RedBlackTree<T>::Node::Node(const T& value1) {
-        parent = nullptr;
-        left = nullptr;
-        right = nullptr;
-        value = value1;
-        color = Color::BLACK;
-    }
-
-    template<typename T>
-    RedBlackTree<T>::Node::Node(const T& value1, NodePtr parent1, enum Color color1) {
-        parent = parent1;
-        left = nullptr;
-        right = nullptr;
-        value = value1;
-        color = color1;
-    }
-
-    template<typename T>
-    std::shared_ptr<typename RedBlackTree<T>::Node> RedBlackTree<T>::Node::GetGrandParent() {
+    typename RedBlackTree<T>::Node* RedBlackTree<T>::Node::GetGrandParent() {
         if (!parent) {
             return nullptr;
         } else {
@@ -556,18 +539,19 @@ namespace DSVisualization {
     }
 
     template<typename T>
-    std::shared_ptr<typename RedBlackTree<T>::Node> RedBlackTree<T>::Node::GetUncle() {
+    typename RedBlackTree<T>::Node* RedBlackTree<T>::Node::GetUncle() {
         if (!parent) {
             return nullptr;
         }
         if (!(parent->parent)) {
             return nullptr;
         }
-        return (parent->parent->right == parent ? parent->parent->left : parent->parent->right);
+        return (parent->parent->right.get() == parent ? parent->parent->left.get()
+                                                      : parent->parent->right.get());
     }
 
     template<typename T>
-    std::shared_ptr<typename RedBlackTree<T>::Node> RedBlackTree<T>::Node::GetRoot(NodePtr node) {
+    typename RedBlackTree<T>::Node* RedBlackTree<T>::Node::GetRoot(NodePtr node) {
         if (!node) {
             return nullptr;
         }
@@ -578,15 +562,15 @@ namespace DSVisualization {
     }
 
     template<typename T>
-    std::shared_ptr<typename RedBlackTree<T>::Node> RedBlackTree<T>::Node::Next(NodePtr node) {
+    const typename RedBlackTree<T>::Node* RedBlackTree<T>::Node::Next(const Node* node) {
         if (node->right) {
-            node = node->right;
+            node = node->right.get();
             while (node->left) {
-                node = node->left;
+                node = node->left.get();
             }
             return node;
         }
-        while (node->parent && node->parent->right == node) {
+        while (node->parent && node->parent->right.get() == node) {
             node = node->parent;
         }
         if (!node->parent) {
@@ -598,17 +582,19 @@ namespace DSVisualization {
 
     template<typename T>
     Kid RedBlackTree<T>::Node::WhichKid(NodePtr kid) {
-        if (left == kid) {
-            return Kid::LEFT;
+        if (left.get() == kid) {
+            return Kid::left;
+        } else if (right.get() == kid) {
+            return Kid::right;
         } else {
-            return Kid::RIGHT;
+            return Kid::non;
         }
     }
 
     template<typename T>
-    enum Color RedBlackTree<T>::Node::Color(NodePtr node) {
+    enum Color RedBlackTree<T>::Node::GetColor(NodePtr node) {
         if (!node) {
-            return Color::BLACK;
+            return Color::black;
         }
         return node->color;
     }
@@ -623,37 +609,42 @@ a            d      ------>       b             e
           c     e              a     c
  */
     template<typename T>
-    void RedBlackTree<T>::Node::RotateLeft(NodePtr d,
-                                           const std::shared_ptr<Observable<TreeInfo<T>>>& port,
-                                           RedBlackTree<T>* tree) {
+    void RedBlackTree<T>::RotateLeft(typename RedBlackTree<T>::Node* d, RedBlackTree<T>* tree) {
+        PRINT_WHERE_AM_I();
         auto tree_info = GetTreeInfo(*tree);
         NodePtr b = d->parent;
-        NodePtr c = d->left;
+        NodePtr c = d->left.get();
         NodePtr pp = b->parent;
-        Kid kid;
+        Kid kid = Kid::non;
         if (pp) {
             kid = pp->WhichKid(b);
         }
-        tree_info.node_to_status[b] = tree_info.node_to_status[b->left] =
-                tree_info.node_to_status[d] = tree_info.node_to_status[d->left] =
-                        tree_info.node_to_status[d->right] = Status::ROTATE;
-        Send(port, tree_info);
+        tree_info.node_to_status[b] = tree_info.node_to_status[b->left.get()] =
+                tree_info.node_to_status[d] = tree_info.node_to_status[d->left.get()] =
+                        tree_info.node_to_status[d->right.get()] = Status::rotate;
+        Send(tree_info);
+        root_.release();
+        d->left.release();
+        b->right.release();
         b->parent = d;
-        b->right = c;
+        b->right.reset(c);
         if (c) {
             c->parent = b;
         }
-        d->left = b;
+        d->left.reset(b);
         d->parent = pp;
         if (pp) {
-            if (kid == Kid::LEFT) {
-                pp->left = d;
+            if (kid == Kid::left) {
+                pp->left.release();
+                pp->left.reset(d);
             } else {
-                pp->right = d;
+                pp->right.release();
+                pp->right.reset(d);
             }
         }
-        tree_info.root = GetRoot(d);
-        Send(port, tree_info);
+        root_.reset(Node::GetRoot(d));
+        tree_info.root = root_.get();
+        Send(tree_info);
     }
 
     /*
@@ -666,67 +657,56 @@ a            d      ------>       b             e
 a     c                                          c     e
  */
     template<typename T>
-    void RedBlackTree<T>::Node::RotateRight(NodePtr b,
-                                            const std::shared_ptr<Observable<TreeInfo<T>>>& port,
-                                            RedBlackTree<T>* tree) {
+    void RedBlackTree<T>::RotateRight(typename RedBlackTree<T>::Node* b, RedBlackTree<T>* tree) {
+        PRINT_WHERE_AM_I();
         auto tree_info = GetTreeInfo(*tree);
         NodePtr d = b->parent;
-        NodePtr c = b->right;
+        NodePtr c = b->right.get();
         NodePtr pp = d->parent;
-        Kid kid;
+        Kid kid = Kid::non;
         if (pp) {
             kid = pp->WhichKid(d);
         }
         tree_info.node_to_status[d] = tree_info.node_to_status[b] =
-                tree_info.node_to_status[b->left] = tree_info.node_to_status[b->right] =
-                        tree_info.node_to_status[d->right] = Status::ROTATE;
-        Send(port, tree_info);
+                tree_info.node_to_status[b->left.get()] = tree_info.node_to_status[b->right.get()] =
+                        tree_info.node_to_status[d->right.get()] = Status::rotate;
+        Send(tree_info);
+        root_.release();
+        d->left.release();
+        b->right.release();
         d->parent = b;
-        d->left = c;
+        d->left.reset(c);
         if (c) {
             c->parent = d;
         }
-        b->right = d;
+        b->right.reset(d);
         b->parent = pp;
         if (pp) {
-            if (kid == Kid::LEFT) {
-                pp->left = b;
+            if (kid == Kid::left) {
+                pp->left.release();
+                pp->left.reset(b);
             } else {
-                pp->right = b;
+                pp->right.release();
+                pp->right.reset(b);
             }
         }
-        tree_info.root = GetRoot(b);
-        Send(port, tree_info);
+        root_.reset(Node::GetRoot(b));
+        tree_info.root = root_.get();
+        Send(tree_info);
     }
-
-    template<typename T>
-    void RedBlackTree<T>::Node::Unlink(NodePtr node) {
-        if (!node) {
-            return;
-        }
-        Unlink(node->left);
-        Unlink(node->right);
-        node->left = nullptr;
-        node->right = nullptr;
-        node->parent = nullptr;
-    }
-
-    template<typename T>
-    void RedBlackTree<T>::Node::Values(NodePtr node, std::vector<T>& values) {
-        if (!node) {
-            return;
-        }
-        Values(node->left, values);
-        values.push_back(node->value);
-        Values(node->right, values);
-    }
-
-    void PrintLines(std::ostream& os, int32_t depth);
 
     template<typename T>
     void RedBlackTree<T>::Node::Print(std::ostream& os, int32_t depth) const {
+        static auto PrintLines = [](std::ostream& os, int32_t depth) {
+            if (depth > 0) {
+                for (int32_t i = 1; i < depth; ++i) {
+                    os << "|   ";
+                }
+                os << "|---";
+            }
+        };
         PrintLines(os, depth);
-        os << "(" << value << ", " << (color == Color::RED ? 'r' : 'b') << ")\n";
+        os << "(" << value << ", " << (color == Color::red ? 'r' : 'b') << ")\n";
         if (left) {
             left->Print(os, depth + 1);
         } else {
@@ -747,7 +727,7 @@ a     c                                          c     e
         std::vector<T> values;
         std::vector<int32_t> depths;
         try {
-            Node::CheckInvariants(root_, values, depths, 0);
+            Node::CheckInvariants(root_.get(), values, depths, 0);
         } catch (std::runtime_error&) {
             return false;
         }
@@ -779,9 +759,9 @@ a     c                                          c     e
                 throw std::runtime_error("Red node cannot have red kid");
             }
         }
-        CheckInvariants(node->left, values, depths, black_depth);
+        CheckInvariants(node->left.get(), values, depths, black_depth);
         values.push_back(node->value);
-        CheckInvariants(node->right, values, depths, black_depth);
+        CheckInvariants(node->right.get(), values, depths, black_depth);
     }
 #endif
 }// namespace DSVisualization

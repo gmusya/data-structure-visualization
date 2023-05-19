@@ -1,3 +1,4 @@
+#define NO_LOGGING
 #include "../red_black_tree.h"
 
 #include <chrono>

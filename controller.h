@@ -1,31 +1,37 @@
 #pragma once
 
+#include "observable.h"
+#include "observer.h"
+
 #include <iostream>
 #include <memory>
 #include <string>
 
 namespace DSVisualization {
-    class Model;
-
-    template<typename Data>
-    class Observer;
+    template<typename T>
+    class RedBlackTree;
 
     struct TreeQuery;
 
-    using DataViewController = TreeQuery;
-    using ObserverViewControllerPtr = std::shared_ptr<Observer<DataViewController>>;
-
     class Controller {
+        using Model = RedBlackTree<int>;
+
     public:
-        Controller();
+        explicit Controller(Model& model);
+        Controller() = delete;
+        Controller(const Controller&) = delete;
+        Controller& operator=(const Controller&) = delete;
+        Controller(Controller&&) = delete;
+        Controller& operator=(Controller&&) = delete;
+
         ~Controller();
 
-        void SetModel(Model* model);
-        [[nodiscard]] ObserverViewControllerPtr GetObserver() const;
-        void OnNotifyFromView(const DataViewController& value);
+        [[nodiscard]] Observer<TreeQuery>* GetObserver();
 
     private:
-        ObserverViewControllerPtr observer_view_controller;
-        Model* model_ptr = nullptr;
+        void OnNotifyFromView(const TreeQuery& value);
+
+        Observer<TreeQuery> observer_view_controller_;
+        Model* model_ptr_;
     };
 }// namespace DSVisualization

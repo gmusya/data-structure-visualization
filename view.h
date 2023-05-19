@@ -20,32 +20,23 @@ namespace DSVisualization {
     template<typename Data>
     class Observable;
 
-    using DataModelView = TreeInfo<int>;
-    using ObservableModelViewPtr = std::shared_ptr<Observable<DataModelView>>;
-    using ObserverModelViewPtr = std::shared_ptr<Observer<DataModelView>>;
-
-    using DataViewController = TreeQuery;
-    using ObservableViewControllerPtr = std::shared_ptr<Observable<DataViewController>>;
-    using ObserverViewControllerPtr = std::shared_ptr<Observer<DataViewController>>;
-
     struct DrawableNode {
         float x;
         float y;
         int key;
-        Color color;
-        Status status;
-        std::shared_ptr<DrawableNode> left;
-        std::shared_ptr<DrawableNode> right;
+        QColor outside_color;
+        QColor inside_color;
+        std::unique_ptr<DrawableNode> left;
+        std::unique_ptr<DrawableNode> right;
     };
 
     class View : public QGraphicsView {
     public:
         View();
 
-        [[nodiscard]] ObserverModelViewPtr GetObserver() const;
-        void OnNotifyFromModel(const DataModelView& value);
-        void SubscribeFromController(ObserverViewControllerPtr observer_view_controller);
-        void UnsubscribeFromController(ObserverViewControllerPtr observer_view_controller);
+        [[nodiscard]] Observer<RedBlackTree<int>::Data>* GetObserver();
+        void OnNotifyFromModel(const RedBlackTree<int>::Data& value);
+        void SubscribeToData(Observer<TreeQuery>* observer_view_controller);
 
     private:
         void AddWidgetsToLayout();
@@ -59,33 +50,38 @@ namespace DSVisualization {
         void OnFindButtonPushed();
         void HandlePushButton(DSVisualization::TreeQueryType query_type, const std::string& text);
 
-        std::shared_ptr<DrawableNode>
-        GetDrawableNode(const TreeInfo<int>& tree_info,
-                        const std::shared_ptr<RedBlackTree<int>::Node>& node, int depth,
-                        int& counter);
+        std::unique_ptr<DrawableNode> GetDrawableNode(const TreeInfo<int>& tree_info,
+                                                      RedBlackTree<int>::Node* node, float depth,
+                                                      float& counter);
 
-        void DrawTree(const std::shared_ptr<DrawableNode>& root);
-        void DrawNode(const std::shared_ptr<DrawableNode>& node);
-        void DrawEdgeBetweenNodes(const std::shared_ptr<DrawableNode>& parent, bool is_child_left);
-        void RecursiveDraw(const std::shared_ptr<DrawableNode>& node);
+        void DrawTree(const std::unique_ptr<DrawableNode>& root);
+        void DrawNode(const std::unique_ptr<DrawableNode>& node);
+        void DrawEdgeBetweenNodes(const std::unique_ptr<DrawableNode>& parent, bool is_child_left);
+        void RecursiveDraw(const std::unique_ptr<DrawableNode>& node);
 
-        const float default_node_diameter = 50;
-        float current_width = 960;
-        const float horizontal_space_between_nodes = 5;
-        float node_diameter = 50;
-        const float vertical_space_between_nodes = 3;
-        QPushButton* insert_button;
-        QPushButton* erase_button;
-        QPushButton* find_button;
-        QGridLayout* main_layout;
-        QLineEdit* insert_line_edit;
-        QLineEdit* erase_line_edit;
-        QLineEdit* find_line_edit;
-        QGraphicsView* tree_view;
-        QGraphicsScene* main_scene;
-        float max_x = 0;
-        int trees_to_show_counter = 0;
-        ObserverModelViewPtr observer_model_view;
-        ObservableViewControllerPtr observable_view_controller;
+        static constexpr float default_width = 960;
+        static constexpr float default_height = 540;
+        static constexpr float default_node_diameter = 50;
+        static constexpr float horizontal_space_between_nodes = 5;
+        static constexpr float vertical_space_between_nodes = 3;
+        static constexpr float margin = 40;
+        static constexpr int draw_delay_in_ms = 500;
+        float tree_width_ = 0;
+        float current_width_ = default_width;
+        float current_node_diameter_ = default_node_diameter;
+        std::unique_ptr<QGridLayout> main_layout_;
+        std::unique_ptr<QPushButton> insert_button_;
+        std::unique_ptr<QPushButton> erase_button_;
+        std::unique_ptr<QPushButton> find_button_;
+        std::unique_ptr<QLineEdit> insert_line_edit_;
+        std::unique_ptr<QLineEdit> erase_line_edit_;
+        std::unique_ptr<QLineEdit> find_line_edit_;
+        std::unique_ptr<QGraphicsScene> tree_scene_;
+        std::unique_ptr<QGraphicsView> tree_view_;
+        std::unique_ptr<QGraphicsScene> main_scene_;
+        int trees_to_show_counter_ = 0;
+        TreeQuery query_;
+        Observer<RedBlackTree<int>::Data> observer_model_view_;
+        Observable<TreeQuery> observable_view_controller_;
     };
 }// namespace DSVisualization

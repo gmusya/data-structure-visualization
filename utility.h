@@ -2,7 +2,9 @@
 
 #include <chrono>
 #include <ctime>
+#include <iostream>
 
+#ifndef NO_LOGGING
 #define PRINT_WHERE_AM_I()                                                                         \
     do {                                                                                           \
         auto end = std::chrono::system_clock::now();                                               \
@@ -12,3 +14,6 @@
         std::cerr << str << " " << __PRETTY_FUNCTION__ << " " << __FILE__ << ":" << __LINE__       \
                   << std::endl;                                                                    \
     } while (false)
+#else
+#define PRINT_WHERE_AM_I()
+#endif

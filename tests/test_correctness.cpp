@@ -7,13 +7,13 @@
 
 namespace DSVisualization {
     namespace {
-        template<typename T>
-        std::vector<T> Values(const std::set<T>& s) {
-            std::vector<T> values;
-            for (auto& now : s) {
-                values.push_back(now);
+        template<typename It>
+        std::vector<typename It::value_type> Values(It begin, It end) {
+            std::vector<typename It::value_type> result;
+            for (auto it = begin; it != end; ++it) {
+                result.push_back(*it);
             }
-            return values;
+            return result;
         }
     }// namespace
 
@@ -37,7 +37,7 @@ namespace DSVisualization {
                     s.erase(value);
                     ss << "erase " << value << "\n";
                 }
-                ASSERT_TRUE(Values(s) == rb_tree.Values());
+                ASSERT_TRUE(Values(s.begin(), s.end()) == Values(rb_tree.begin(), rb_tree.end()));
                 ASSERT_TRUE(s.size() == rb_tree.Size());
                 ASSERT_TRUE(s.empty() == rb_tree.Empty());
             }

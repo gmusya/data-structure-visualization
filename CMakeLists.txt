@@ -1,14 +1,26 @@
-cmake_minimum_required(VERSION 3.23)
+cmake_minimum_required(VERSION 3.22)
 project(data_structure_visualization)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
-set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
-add_compile_options(-Wall -Wextra -Wpedantic)
-# add_compile_options(-fsanitize=address)
-# add_link_options(-fsanitize=address)
+
+set(ASAN OFF)
+
+if (ASAN)
+    add_compile_options(-fsanitize=address)
+    add_link_options(-fsanitize=address)
+endif ()
+
+add_executable(data_structure_visualization main.cpp application.cpp view.cpp controller.cpp)
+if (MSVC)
+    target_compile_options(data_structure_visualization PRIVATE /W4 /WX)
+else ()
+    target_compile_options(data_structure_visualization PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif ()
+
+
 include(GoogleTest)
 
 find_package(Qt5 COMPONENTS
@@ -17,8 +29,6 @@ find_package(Qt5 COMPONENTS
         Widgets
         REQUIRED)
 
-# set(CMAKE_CXX_FLAGS "-Os -DNDEBUG -Wall -Wextra")
-add_executable(data_structure_visualization main.cpp application.cpp view.cpp model.cpp controller.cpp red_black_tree.cpp)
 target_link_libraries(data_structure_visualization
         Qt5::Core
         Qt5::Gui
@@ -29,9 +39,10 @@ enable_testing()
 add_subdirectory(lib/googletest)
 include_directories(lib/googletest/googletest/include)
 
-add_executable(test_correctness red_black_tree.cpp tests/test_correctness.cpp tests/test_erase.cpp tests/test_insert.cpp tests/test_invariants.cpp)
-target_link_libraries(test_correctness gtest gtest_main)
+add_executable(test_correctness tests/test_insert.cpp tests/test_erase.cpp tests/test_correctness.cpp)
+add_executable(test_invariants tests/test_invariants.cpp)
+add_executable(test_performance tests/test_performance.cpp)
 
-# set(CMAKE_CXX_FLAGS "-O3 -Wall -Wextra")
-add_executable(test_performance red_black_tree.cpp tests/test_performance.cpp)
+target_link_libraries(test_correctness gtest gtest_main)
+target_link_libraries(test_invariants gtest gtest_main)
 target_link_libraries(test_performance gtest gtest_main)

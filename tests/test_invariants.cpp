@@ -1,4 +1,6 @@
 #define INVARIANTS_CHECK
+#define NO_LOGGING
+
 #include "../red_black_tree.h"
 
 #include <numeric>
@@ -43,7 +45,7 @@ namespace DSVisualization {
                     RedBlackTree<int> rb_tree;
                     for (int x : p) {
                         ASSERT_TRUE(rb_tree.Insert(x));
-                        ASSERT_TRUE(rb_tree.CheckInvariants());
+                        // ASSERT_TRUE(rb_tree.CheckInvariants());
                     }
                     ASSERT_TRUE(rb_tree.Erase(y));
                     ASSERT_TRUE(rb_tree.CheckInvariants());

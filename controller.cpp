@@ -1,40 +1,42 @@
 #include "controller.h"
-#include "model.h"
 #include "observer.h"
 #include "queries.h"
+#include "red_black_tree.h"
 #include "utility.h"
 
 namespace DSVisualization {
-    Controller::Controller() {
+    Controller::Controller(Model& model)
+        : observer_view_controller_(
+                  [this](const TreeQuery& x) {
+                      OnNotifyFromView(x);
+                  },
+                  [this](const TreeQuery& x) {
+                      OnNotifyFromView(x);
+                  },
+                  [this](const TreeQuery& x) {
+                      OnNotifyFromView(x);
+                  }),
+          model_ptr_(&model) {
         PRINT_WHERE_AM_I();
-        observer_view_controller =
-                std::make_shared<Observer<DataViewController>>([this](const DataViewController& x) {
-                    OnNotifyFromView(x);
-                });
     }
 
     Controller::~Controller() {
         PRINT_WHERE_AM_I();
     }
 
-    void Controller::SetModel(Model* model_ptr_) {
+    Observer<TreeQuery>* Controller::GetObserver() {
         PRINT_WHERE_AM_I();
-        model_ptr = model_ptr_;
+        return &observer_view_controller_;
     }
 
-    ObserverViewControllerPtr Controller::GetObserver() const {
-        PRINT_WHERE_AM_I();
-        return observer_view_controller;
-    }
-
-    void Controller::OnNotifyFromView(const DataViewController& query) {
+    void Controller::OnNotifyFromView(const TreeQuery& query) {
         PRINT_WHERE_AM_I();
         if (query.query_type == TreeQueryType::INSERT) {
-            model_ptr->Insert(query.value);
+            model_ptr_->Insert(query.value);
         } else if (query.query_type == TreeQueryType::ERASE) {
-            model_ptr->Erase(query.value);
+            model_ptr_->Erase(query.value);
         } else if (query.query_type == TreeQueryType::FIND) {
-            model_ptr->Find(query.value);
+            model_ptr_->Find(query.value);
         }
     }
 }// namespace DSVisualization

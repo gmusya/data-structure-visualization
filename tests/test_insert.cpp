@@ -3,13 +3,21 @@
 #include <gtest/gtest.h>
 
 namespace DSVisualization {
+    namespace {
+        template<typename T>
+        std::string RBTreeToString(const RedBlackTree<T>& rb_tree) {
+            std::stringstream ss;
+            ss << rb_tree;
+            return ss.str();
+        }
+    }
     TEST(Insert, FirstInsert) {
         RedBlackTree<int> rb_tree;
         ASSERT_TRUE(rb_tree.Insert(1));
         std::string result = "(1, b)\n"
                              "|---(NIL, b)\n"
                              "|---(NIL, b)\n";
-        EXPECT_EQ(rb_tree.Str(), result);
+        EXPECT_EQ(RBTreeToString(rb_tree), result);
     }
 
     TEST(Insert, SecondInsert) {
@@ -22,7 +30,7 @@ namespace DSVisualization {
                                  "|---(3, r)\n"
                                  "|   |---(NIL, b)\n"
                                  "|   |---(NIL, b)\n";
-            EXPECT_EQ(rb_tree.Str(), result);
+            EXPECT_EQ(RBTreeToString(rb_tree), result);
         }
 
         {
@@ -34,7 +42,7 @@ namespace DSVisualization {
                                  "|   |---(NIL, b)\n"
                                  "|   |---(NIL, b)\n"
                                  "|---(NIL, b)\n";
-            EXPECT_EQ(rb_tree.Str(), result);
+            EXPECT_EQ(RBTreeToString(rb_tree), result);
         }
     }
 
@@ -51,7 +59,7 @@ namespace DSVisualization {
                                  "|---(5, r)\n"
                                  "|   |---(NIL, b)\n"
                                  "|   |---(NIL, b)\n";
-            EXPECT_EQ(rb_tree.Str(), result);
+            EXPECT_EQ(RBTreeToString(rb_tree), result);
         }
         {
             RedBlackTree<int> rb_tree;
@@ -65,7 +73,7 @@ namespace DSVisualization {
                                  "|---(5, r)\n"
                                  "|   |---(NIL, b)\n"
                                  "|   |---(NIL, b)\n";
-            EXPECT_EQ(rb_tree.Str(), result);
+            EXPECT_EQ(RBTreeToString(rb_tree), result);
         }
     }
 
@@ -82,7 +90,7 @@ namespace DSVisualization {
                                  "|---(3, r)\n"
                                  "|   |---(NIL, b)\n"
                                  "|   |---(NIL, b)\n";
-            EXPECT_EQ(rb_tree.Str(), result);
+            EXPECT_EQ(RBTreeToString(rb_tree), result);
         }
         {
             RedBlackTree<int> rb_tree;
@@ -96,7 +104,7 @@ namespace DSVisualization {
                                  "|---(3, r)\n"
                                  "|   |---(NIL, b)\n"
                                  "|   |---(NIL, b)\n";
-            EXPECT_EQ(rb_tree.Str(), result);
+            EXPECT_EQ(RBTreeToString(rb_tree), result);
         }
     }
 }// namespace DSVisualization

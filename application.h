@@ -1,21 +1,26 @@
 #pragma once
 
 #include "controller.h"
-#include "model.h"
+#include "red_black_tree.h"
 #include "view.h"
 
 #include <iostream>
 
 #include <QApplication>
 
-class Application {
-public:
-    explicit Application();
-    ~Application();
-    static int Run();
+namespace DSVisualization {
+    class Application {
+    public:
+        Application();
+        Application(const Application&) = delete;
+        Application& operator=(const Application&) = delete;
+        Application(Application&&) = delete;
+        Application& operator=(Application&&) = delete;
+        ~Application();
 
-private:
-    DSVisualization::Model* model_ptr;
-    DSVisualization::View* view_ptr;
-    DSVisualization::Controller* controller_ptr;
-};
+    private:
+        RedBlackTree<int> model_;
+        View view_;
+        Controller controller_;
+    };
+}// namespace DSVisualization

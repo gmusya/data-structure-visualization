@@ -1,45 +1,52 @@
 #pragma once
 
-#include <algorithm>
-#include <iostream>
-#include <memory>
-#include <vector>
+#include <functional>
+#include <list>
 
 namespace DSVisualization {
-    template<typename Data>
+    template<typename T>
     class Observer;
 
-    template<typename Data>
+    template<typename T>
     class Observable {
+        friend Observer<T>;
 
     public:
-        void Subscribe(std::shared_ptr<Observer<Data>> observer) {
-            observers.push_back(observer);
+        template<typename Tt>
+        Observable(Tt&& data) : data_(std::forward<Tt>(data)) {
         }
 
-        void Subscribe(std::shared_ptr<Observer<Data>> observer, const Data& data) {
-            observers.push_back(observer);
-            observer->OnSubscribe(data);
-        }
-
-        void Notify(const Data& data) {
-            for (auto& observer : observers) {
-                observer->OnNotify(data);
+        Observable(const Observable<T>&) = delete;
+        Observable& operator=(const Observable<T>&) = delete;
+        Observable(Observable&&) = delete;
+        Observable& operator=(Observer<T>&&) = delete;
+        ~Observable() {
+            while (!observers_.empty()) {
+                observers_.front()->Unsubscribe();
             }
         }
 
-        void Unsubscribe(std::shared_ptr<Observer<Data>> observer, const Data& data) {
-            auto it = std::find(observers.begin(), observers.end(), observer);
-            (*it)->OnUnsubscribe(data);
-            observers.erase(it);
+        void Subscribe(Observer<T>* obs) {
+            if (obs->IsSubscribed()) {
+                obs->Unsubscribe();
+            }
+            observers_.push_back(obs);
+            obs->SetObservable(this);
+            obs->on_subscribe_(data_());
         }
 
-        void Unsubscribe(std::shared_ptr<Observer<Data>> observer) {
-            auto it = std::find(observers.begin(), observers.end(), observer);
-            observers.erase(it);
+        void Notify() const {
+            for (auto obs : observers_) {
+                obs->on_notify_(data_());
+            }
         }
 
     private:
-        std::vector<std::shared_ptr<Observer<Data>>> observers;
+        void Detach(Observer<T>* obs) {
+            obs->on_unsubscribe_(data_());
+            observers_.remove(obs);
+        }
+        std::function<T()> data_;
+        std::list<Observer<T>*> observers_;
     };
 }// namespace DSVisualization
