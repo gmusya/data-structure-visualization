@@ -712,10 +712,9 @@ namespace DSVisualization {
 
     template<typename T>
     struct TreeInfo {
-        using NodePtr = typename RedBlackTree<T>::Node*;
         size_t tree_size = 0;
-        NodePtr root = nullptr;
-        std::map<NodePtr, Status> node_to_status;
+        const RedBlackTree<T>::Node* root = nullptr;
+        std::map<const typename RedBlackTree<T>::Node*, Status> node_to_status;
     };
 
     template<typename T>

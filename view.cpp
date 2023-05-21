@@ -205,7 +205,7 @@ namespace DSVisualization {
     }
 
     std::unique_ptr<DrawableNode> View::GetDrawableNode(const TreeInfo<int>& tree_info,
-                                                        RedBlackTree<int>::Node* node, float depth,
+                                                        const RedBlackTree<int>::Node* node, float depth,
                                                         float& counter) {
         if (!node) {
             return nullptr;

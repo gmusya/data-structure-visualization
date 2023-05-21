@@ -49,7 +49,7 @@ namespace DSVisualization {
         void HandlePushButton(DSVisualization::TreeQueryType query_type, const std::string& text);
 
         std::unique_ptr<DrawableNode> GetDrawableNode(const TreeInfo<int>& tree_info,
-                                                      RedBlackTree<int>::Node* node, float depth,
+                                                      const RedBlackTree<int>::Node* node, float depth,
                                                       float& counter);
 
         void DrawTree(const std::unique_ptr<DrawableTree>& tree);
