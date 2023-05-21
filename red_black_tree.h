@@ -49,38 +49,21 @@ namespace DSVisualization {
                 root_ = std::unique_ptr<Node>(
                         new Node{nullptr, nullptr, nullptr, value, Color::black});
                 ++size_;
-                {
-                    SetNodeStatus(root_.get(), Status::current);
-                    tree_info_.root = Root();
-                    Send();
-                    SetNodeStatus(root_.get(), Status::touched);
-                    Send();
-                }
+                SetNodeStatus(root_.get(), Status::current);
+                tree_info_.root = Root();
+                Send();
+                SetNodeStatus(root_.get(), Status::touched);
+                Send();
                 return true;
             }
-            NodePtr node = root_.get();
             SetNodeStatus(root_.get(), Status::current);
             Send();
-            NodePtr parent = nullptr;
-            while (node) {
-                parent = node;
-                if (value < node->value) {
-                    SetNodeStatus(node, Status::touched);
-                    node = node->left.get();
-                    SetNodeStatus(node, Status::current);
-                } else if (value == node->value) {
-                    Send();
-                    return false;
-                } else {
-                    SetNodeStatus(node, Status::touched);
-                    node = node->right.get();
-                    SetNodeStatus(node, Status::current);
-                }
-                Send();
+            NodePtr parent = SearchNearValue(value);
+            if (parent != nullptr && parent->value == value) {
+                return false;
             }
-
             ++size_;
-            node = new Node{parent, nullptr, nullptr, value, Color::red};
+            auto node = new Node{parent, nullptr, nullptr, value, Color::red};
             SetNodeStatus(node, Status::current);
             (value < parent->value ? parent->left : parent->right) = std::unique_ptr<Node>(node);
             Send();
@@ -108,49 +91,31 @@ namespace DSVisualization {
                     break;
                 }
             }
-            if (node->GetGrandParent()->WhichKid(node->parent) == Kid::left) {
-                if (node->parent->WhichKid(node) == Kid::right) {
-                    RotateLeft(node);
-                    SetNodeStatus(node, Status::touched);
-                    node = node->left.get();
-                    SetNodeStatus(node, Status::current);
-                    Send();
-                }
-                RotateRight(node->parent);
-                node->parent->color = Color::black;
-                node->parent->right->color = Color::red;
-                if (!node->parent->parent) {
-                    tree_info_.root = Root();
-                }
-                Send();
+            Kid parent_grandparent = node->GetGrandParent()->WhichKid(node->parent);
+            Kid node_parent = node->parent->WhichKid(node);
+            if (node_parent == Opposite(parent_grandparent)) {
+                Rotate(node, parent_grandparent);
                 SetNodeStatus(node, Status::touched);
+                node = GetKid(node, parent_grandparent).get();
+                SetNodeStatus(node, Status::current);
                 Send();
-                return true;
-            } else {
-                if (node->parent->WhichKid(node) == Kid::left) {
-                    RotateRight(node);
-                    SetNodeStatus(node, Status::touched);
-                    node = node->right.get();
-                    SetNodeStatus(node, Status::current);
-                    Send();
-                }
-                RotateLeft(node->parent);
-                node->parent->color = Color::black;
-                node->parent->left->color = Color::red;
-                if (!node->parent->parent) {
-                    tree_info_.root = Root();
-                }
-                Send();
-                SetNodeStatus(node, Status::touched);
-                Send();
-                return true;
             }
+            Rotate(node->parent, Opposite(parent_grandparent));
+            node->parent->color = Color::black;
+            GetKid(node->parent, Opposite(parent_grandparent))->color = Color::red;
+            if (!node->parent->parent) {
+                tree_info_.root = Root();
+            }
+            Send();
+            SetNodeStatus(node, Status::touched);
+            Send();
+            return true;
         }
 
         bool Erase(const T& value) {
             ClearTreeInfo();
-            NodePtr node = SearchValue(value);
-            if (!node) {
+            NodePtr node = SearchNearValue(value);
+            if (!node || node->value != value) {
                 return false;
             }
             SetNodeStatus(node, Status::to_delete);
@@ -174,8 +139,8 @@ namespace DSVisualization {
             }
             Kid kid = node->parent->WhichKid(node);
             auto ptr = node->right.release();
-            (kid == Kid::left ? node->parent->left : node->parent->right).release();
-            (kid == Kid::left ? node->parent->left : node->parent->right).reset(ptr);
+            GetKid(node->parent, kid).release();
+            GetKid(node->parent, kid).reset(ptr);
             if (ptr) {
                 ptr->parent = node->parent;
             }
@@ -185,26 +150,17 @@ namespace DSVisualization {
                 return true;
             }
             NodePtr parent = node->parent;
-            {
-                assert(node->right.get() == nullptr);
-                assert(node->left.get() == nullptr);
-                node->parent = nullptr;
-                node = ptr;
-                SetNodeStatus(node, Status::current);
-                Send();
-            }
-            while (true) {
-                if (!parent) {
-                    Send();
-                    return true;
-                }
+            node = ptr;
+            SetNodeStatus(node, Status::current);
+            Send();
+            while (parent) {
                 kid = parent->WhichKid(node);
-                NodePtr sibling = (kid == Kid::left ? parent->right : parent->left).get();
+                NodePtr sibling = GetKid(parent, Opposite(kid)).get();
                 if (sibling->color == Color::red) {
                     parent->color = Color::red;
                     sibling->color = Color::black;
                     Rotate(sibling, kid);
-                    sibling = (kid == Kid::left ? parent->right : parent->left).get();
+                    sibling = GetKid(parent, Opposite(kid)).get();
                     tree_info_.root = root_.get();
                     Send();
                 }
@@ -224,17 +180,10 @@ namespace DSVisualization {
                         return true;
                     }
                 }
-                if ((kid == Kid::left && GetNodeColor(sibling->left.get()) == Color::red &&
-                     GetNodeColor(sibling->right.get()) == Color::black) ||
-                    (kid == Kid::right && GetNodeColor(sibling->left.get()) == Color::black &&
-                     GetNodeColor(sibling->right.get()) == Color::red)) {
-                    if (kid == Kid::left) {
-                        RotateRight(sibling->left.get());
-                        Send();
-                    } else {
-                        RotateLeft(sibling->right.get());
-                        Send();
-                    }
+                if (GetNodeColor(GetKid(sibling, kid).get()) == Color::red &&
+                    GetNodeColor(GetKid(sibling, Opposite(kid)).get()) == Color::black) {
+                    Rotate(GetKid(sibling, kid).get(), Opposite(kid));
+                    Send();
                     sibling->color = Color::red;
                     sibling->parent->color = Color::black;
                     sibling = sibling->parent;
@@ -244,7 +193,7 @@ namespace DSVisualization {
                 Rotate(sibling, kid);
                 Send();
                 parent->color = Color::black;
-                (kid == Kid::left ? sibling->right : sibling->left)->color = Color::black;
+                GetKid(sibling, Opposite(kid))->color = Color::black;
                 parent->parent->color = color;
                 tree_info_.root = root_.get();
                 Send();
@@ -254,7 +203,7 @@ namespace DSVisualization {
 
         bool Find(const T& value) {
             ClearTreeInfo();
-            return SearchValue(value) != nullptr;
+            return SearchNearValue(value) != nullptr && SearchNearValue(value)->value == value;
         }
 
         [[nodiscard]] size_t Size() const {
@@ -289,6 +238,14 @@ namespace DSVisualization {
                     return Kid::left;
                 default:
                     return Kid::non;
+            }
+        }
+
+        std::unique_ptr<Node>& GetKid(NodePtr node, Kid direction) {
+            if (direction == Kid::left) {
+                return node->left;
+            } else {
+                return node->right;
             }
         }
 
@@ -398,17 +355,23 @@ namespace DSVisualization {
             Send(current_tree_info);
         }
 
-        NodePtr SearchValue(const T& value) {
+        NodePtr SearchNearValue(const T& value) {
             NodePtr node = root_.get();
             SetNodeStatus(node, Status::current);
             Send();
             while (node) {
                 SetNodeStatus(node, Status::touched);
                 if (value < node->value) {
+                    if (!node->left) {
+                        break;
+                    }
                     node = node->left.get();
                 } else if (value == node->value) {
                     break;
                 } else {
+                    if (!node->right) {
+                        break;
+                    }
                     node = node->right.get();
                 }
                 SetNodeStatus(node, Status::current);
