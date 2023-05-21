@@ -10,7 +10,7 @@ namespace DSVisualization {
             ss << rb_tree;
             return ss.str();
         }
-    }
+    }// namespace
     TEST(Erase, EmptyTree) {
         RedBlackTree<int> rb_tree;
         ASSERT_FALSE(rb_tree.Erase(1));

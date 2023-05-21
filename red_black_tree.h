@@ -199,6 +199,7 @@ namespace DSVisualization {
                 Send();
                 return true;
             }
+            return true;
         }
 
         bool Find(const T& value) {

@@ -14,6 +14,7 @@ namespace DSVisualization {
     public:
         friend View;
         MainWindow();
+        ~MainWindow();
 
     private:
         void AddWidgetsToLayout();
@@ -22,16 +23,16 @@ namespace DSVisualization {
         static constexpr float default_height = 540;
         float current_width_ = default_width;
 
-        std::unique_ptr<QGridLayout> main_layout_;
-        std::unique_ptr<QPushButton> insert_button_;
-        std::unique_ptr<QPushButton> erase_button_;
-        std::unique_ptr<QPushButton> find_button_;
-        std::unique_ptr<QLineEdit> insert_line_edit_;
-        std::unique_ptr<QLineEdit> erase_line_edit_;
-        std::unique_ptr<QLineEdit> find_line_edit_;
-        std::unique_ptr<QGraphicsScene> tree_scene_;
-        std::unique_ptr<QGraphicsView> tree_view_;
-        std::unique_ptr<QGraphicsScene> main_scene_;
-        std::unique_ptr<QGraphicsView> main_view_;
+        QGridLayout* main_layout_;
+        QPushButton* insert_button_;
+        QPushButton* erase_button_;
+        QPushButton* find_button_;
+        QLineEdit* insert_line_edit_;
+        QLineEdit* erase_line_edit_;
+        QLineEdit* find_line_edit_;
+        QGraphicsScene* tree_scene_;
+        QGraphicsView* tree_view_;
+        QGraphicsScene* main_scene_;
+        QGraphicsView main_view_;
     };
 }// namespace DSVisualization

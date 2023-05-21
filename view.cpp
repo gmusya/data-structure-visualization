@@ -54,11 +54,11 @@ namespace DSVisualization {
           }) {
         PRINT_WHERE_AM_I();
 
-        QObject::connect(main_window_ptr_->insert_button_.get(), &QPushButton::clicked, this,
+        QObject::connect(main_window_ptr_->insert_button_, &QPushButton::clicked, this,
                          &View::OnInsertButtonPushed);
-        QObject::connect(main_window_ptr_->erase_button_.get(), &QPushButton::clicked, this,
+        QObject::connect(main_window_ptr_->erase_button_, &QPushButton::clicked, this,
                          &View::OnEraseButtonPushed);
-        QObject::connect(main_window_ptr_->find_button_.get(), &QPushButton::clicked, this,
+        QObject::connect(main_window_ptr_->find_button_, &QPushButton::clicked, this,
                          &View::OnFindButtonPushed);
     }
 
@@ -111,19 +111,19 @@ namespace DSVisualization {
 
     void View::OnInsertButtonPushed() {
         PRINT_WHERE_AM_I();
-        std::string str = GetTextAndClear(main_window_ptr_->insert_line_edit_.get());
+        std::string str = GetTextAndClear(main_window_ptr_->insert_line_edit_);
         HandlePushButton(TreeQueryType::insert, std::ref(str));
     }
 
     void View::OnEraseButtonPushed() {
         PRINT_WHERE_AM_I();
-        std::string str = GetTextAndClear(main_window_ptr_->erase_line_edit_.get());
+        std::string str = GetTextAndClear(main_window_ptr_->erase_line_edit_);
         HandlePushButton(TreeQueryType::erase, str);
     }
 
     void View::OnFindButtonPushed() {
         PRINT_WHERE_AM_I();
-        std::string str = GetTextAndClear(main_window_ptr_->find_line_edit_.get());
+        std::string str = GetTextAndClear(main_window_ptr_->find_line_edit_);
         HandlePushButton(TreeQueryType::find, str);
     }
 
