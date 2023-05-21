@@ -186,108 +186,43 @@ namespace DSVisualization {
             }
             NodePtr parent = node->parent;
             {
-                NodePtr nr = ptr;
                 assert(node->right.get() == nullptr);
                 assert(node->left.get() == nullptr);
-                node->left.release();
                 node->parent = nullptr;
-                node = nr;
+                node = ptr;
                 SetNodeStatus(node, Status::current);
                 Send();
             }
             while (true) {
-                if (!node) {
-                    kid = parent->WhichKid(node);
-                    NodePtr sibling = (kid == Kid::left ? parent->right : parent->left).get();
-                    if (sibling->color == Color::red) {
-                        parent->color = Color::red;
-                        sibling->color = Color::black;
-                        (kid == Kid::left ? RotateLeft(sibling) : RotateRight(sibling));
-                        sibling = (kid == Kid::left ? parent->right : parent->left).get();
-                        tree_info_.root = root_.get();
-                        Send();
-                    }
-                    if (parent->color == Color::black &&
-                        (!sibling->left || sibling->left->color == Color::black) &&
-                        (!sibling->right || sibling->right->color == Color::black)) {
+                if (!parent) {
+                    Send();
+                    return true;
+                }
+                kid = parent->WhichKid(node);
+                NodePtr sibling = (kid == Kid::left ? parent->right : parent->left).get();
+                if (sibling->color == Color::red) {
+                    parent->color = Color::red;
+                    sibling->color = Color::black;
+                    Rotate(sibling, kid);
+                    sibling = (kid == Kid::left ? parent->right : parent->left).get();
+                    tree_info_.root = root_.get();
+                    Send();
+                }
+                if (GetNodeColor(sibling->left.get()) == Color::black &&
+                    GetNodeColor(sibling->right.get()) == Color::black) {
+                    if (parent->color == Color::black) {
                         sibling->color = Color::red;
                         node = parent;
                         parent = node->parent;
                         SetNodeStatus(node, Status::current);
                         Send();
                         continue;
-                    }
-                    if (parent->color == Color::red &&
-                        (!sibling->left || sibling->left->color == Color::black) &&
-                        (!sibling->right || sibling->right->color == Color::black)) {
+                    } else {
                         parent->color = Color::black;
                         sibling->color = Color::red;
                         Send();
                         return true;
                     }
-                    if ((kid == Kid::left && GetNodeColor(sibling->left.get()) == Color::red &&
-                         GetNodeColor(sibling->right.get()) == Color::black) ||
-                        (kid == Kid::right && GetNodeColor(sibling->left.get()) == Color::black &&
-                         GetNodeColor(sibling->right.get()) == Color::red)) {
-                        if (kid == Kid::left) {
-                            RotateRight(sibling->left.get());
-                            Send();
-                        } else {
-                            RotateLeft(sibling->right.get());
-                            Send();
-                        }
-                        sibling->color = Color::red;
-                        sibling->parent->color = Color::black;
-                        sibling = sibling->parent;
-                        Send();
-                    }
-                    enum Color color = parent->color;
-                    if (kid == Kid::left) {
-                        RotateLeft(sibling);
-                        Send();
-                    } else {
-                        RotateRight(sibling);
-                        Send();
-                    }
-                    parent->color = Color::black;
-                    (kid == Kid::left ? sibling->right : sibling->left)->color = Color::black;
-                    parent->parent->color = color;
-                    tree_info_.root = root_.get();
-                    Send();
-                    return true;
-                }
-                if (!node->parent) {
-                    Send();
-                    return true;
-                }
-                kid = node->parent->WhichKid(node);
-                NodePtr sibling =
-                        (kid == Kid::left ? node->parent->right : node->parent->left).get();
-                if (sibling->color == Color::red) {
-                    node->parent->color = Color::red;
-                    sibling->color = Color::black;
-                    (kid == Kid::left ? RotateLeft(sibling) : RotateRight(sibling));
-                    sibling = (kid == Kid::left ? node->parent->right : node->parent->left).get();
-                    Send();
-                }
-                if (node->parent->color == Color::black &&
-                    (!sibling->left || sibling->left->color == Color::black) &&
-                    (!sibling->right || sibling->right->color == Color::black)) {
-                    sibling->color = Color::red;
-                    SetNodeStatus(node, Status::touched);
-                    node = node->parent;
-                    SetNodeStatus(node, Status::current);
-                    Send();
-                    continue;
-                }
-                if (node->parent->color == Color::red &&
-                    (!sibling->left || sibling->left->color == Color::black) &&
-                    (!sibling->right || sibling->right->color == Color::black)) {
-                    node->parent->color = Color::black;
-                    sibling->color = Color::red;
-                    tree_info_.root = root_.get();
-                    Send();
-                    return true;
                 }
                 if ((kid == Kid::left && GetNodeColor(sibling->left.get()) == Color::red &&
                      GetNodeColor(sibling->right.get()) == Color::black) ||
@@ -305,17 +240,12 @@ namespace DSVisualization {
                     sibling = sibling->parent;
                     Send();
                 }
-                enum Color color = node->parent->color;
-                if (kid == Kid::left) {
-                    RotateLeft(sibling);
-                    Send();
-                } else {
-                    RotateRight(sibling);
-                    Send();
-                }
-                node->parent->color = Color::black;
+                Color color = parent->color;
+                Rotate(sibling, kid);
+                Send();
+                parent->color = Color::black;
                 (kid == Kid::left ? sibling->right : sibling->left)->color = Color::black;
-                node->parent->parent->color = color;
+                parent->parent->color = color;
                 tree_info_.root = root_.get();
                 Send();
                 return true;
@@ -349,6 +279,25 @@ namespace DSVisualization {
                 node = node->left.get();
             }
             return node;
+        }
+
+        Kid Opposite(Kid kid) {
+            switch (kid) {
+                case Kid::left:
+                    return Kid::right;
+                case Kid::right:
+                    return Kid::left;
+                default:
+                    return Kid::non;
+            }
+        }
+
+        void Rotate(typename RedBlackTree<T>::Node* node, Kid direction) {
+            if (direction == Kid::left) {
+                RotateLeft(node);
+            } else {
+                RotateRight(node);
+            }
         }
 
         /*
@@ -570,7 +519,7 @@ namespace DSVisualization {
 
             ConstIterator& operator++() {
                 assert(node_);
-                node_ = Node::NextNode(node_);
+                node_ = NextNode(node_);
                 return *this;
             }
 
@@ -640,7 +589,25 @@ namespace DSVisualization {
             return true;
         }
 #endif
-        const Node* NextNode(const Node* node) {
+        static const Node* NextNode(const Node* node) {
+            if (node->right) {
+                node = node->right.get();
+                while (node->left) {
+                    node = node->left.get();
+                }
+                return node;
+            }
+            while (node->parent && node->parent->right.get() == node) {
+                node = node->parent;
+            }
+            if (!node->parent) {
+                return nullptr;
+            }
+            node = node->parent;
+            return node;
+        }
+
+        static Node* NextNode(Node* node) {
             if (node->right) {
                 node = node->right.get();
                 while (node->left) {
