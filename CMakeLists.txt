@@ -7,7 +7,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-set(ASAN OFF)
+set(ASAN ON)
 set(EXCEPTION_HANDLING OFF)
 
 if (ASAN)
@@ -19,7 +19,7 @@ if (NOT EXCEPTION_HANDLING)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions")
 endif ()
 
-add_executable(data_structure_visualization main.cpp application.cpp view.cpp controller.cpp)
+add_executable(data_structure_visualization main.cpp application.cpp view.cpp controller.cpp main_window.cpp)
 if (MSVC)
     target_compile_options(data_structure_visualization PRIVATE /W4 /WX)
 else ()

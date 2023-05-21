@@ -2,8 +2,10 @@
 #include "utility.h"
 
 namespace DSVisualization {
-    Application::Application() : /* model_(), view_(), */ controller_(model_) {
+    Application::Application()
+        : main_window_(), model_(), view_(&main_window_), controller_(model_) {
         PRINT_WHERE_AM_I();
+        // main_window_.show();
         view_.SubscribeToQuery(controller_.GetObserver());
         model_.SubscribeToData(view_.GetObserver());
     }
