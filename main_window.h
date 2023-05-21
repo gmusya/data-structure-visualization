@@ -13,14 +13,23 @@ namespace DSVisualization {
     class MainWindow : public QMainWindow {
     public:
         friend View;
+
         MainWindow();
-        ~MainWindow();
+        MainWindow(const MainWindow&) = delete;
+        MainWindow& operator=(const MainWindow&) = delete;
+        MainWindow(MainWindow&&) = delete;
+        MainWindow& operator=(MainWindow&&) = delete;
 
     private:
         void AddWidgetsToLayout();
 
+        void SetEnabledButtons(bool flag);
+        void DisableButtons();
+        void EnableButtons();
+
         static constexpr float default_width = 960;
         static constexpr float default_height = 540;
+        static constexpr float margin = 40;
         float current_width_ = default_width;
 
         QGridLayout* main_layout_;

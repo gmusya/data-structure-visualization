@@ -79,7 +79,7 @@ namespace DSVisualization {
                            [this, result = std::move(result)]() {
                                this->DrawTree(result);
                                if (--trees_to_show_counter_ == 0) {
-                                   EnableButtons();
+                                   main_window_ptr_->EnableButtons();
                                }
                            });
     }
@@ -87,26 +87,6 @@ namespace DSVisualization {
     void View::SubscribeToQuery(Observer<TreeQuery>* observer_view_controller) {
         PRINT_WHERE_AM_I();
         observable_view_controller_.Subscribe(observer_view_controller);
-    }
-
-    void View::SetEnabledButtons(bool flag) {
-        PRINT_WHERE_AM_I();
-        main_window_ptr_->insert_button_->setEnabled(flag);
-        main_window_ptr_->erase_button_->setEnabled(flag);
-        main_window_ptr_->find_button_->setEnabled(flag);
-        main_window_ptr_->insert_line_edit_->setEnabled(flag);
-        main_window_ptr_->erase_line_edit_->setEnabled(flag);
-        main_window_ptr_->find_line_edit_->setEnabled(flag);
-    }
-
-    void View::DisableButtons() {
-        PRINT_WHERE_AM_I();
-        SetEnabledButtons(false);
-    }
-
-    void View::EnableButtons() {
-        PRINT_WHERE_AM_I();
-        SetEnabledButtons(true);
     }
 
     void View::OnInsertButtonPushed() {
@@ -169,7 +149,7 @@ namespace DSVisualization {
 
     void View::HandlePushButton(TreeQueryType query_type, const std::string& text) {
         PRINT_WHERE_AM_I();
-        DisableButtons();
+        main_window_ptr_->DisableButtons();
         std::variant<int, std::string> value = string_to_int(text);
         if (value.index() == 0) {
             query_ = {query_type, std::get<int>(value)};
@@ -179,7 +159,7 @@ namespace DSVisualization {
             QMessageBox::critical(nullptr, "Error", std::get<std::string>(value).c_str());
         }
         if (trees_to_show_counter_ == 0) {
-            EnableButtons();
+            main_window_ptr_->EnableButtons();
         }
     }
 
@@ -216,9 +196,10 @@ namespace DSVisualization {
         main_window_ptr_->tree_view_->scene()->clear();
         current_node_diameter_ = default_node_diameter;
         main_window_ptr_->current_width_ = static_cast<float>(size().width());
-        if (tree_width_ + default_node_diameter + margin >= main_window_ptr_->current_width_) {
+        if (tree_width_ + default_node_diameter + MainWindow::margin >=
+            main_window_ptr_->current_width_) {
             current_node_diameter_ = (default_node_diameter * main_window_ptr_->current_width_) /
-                                     (tree_width_ + default_node_diameter + margin);
+                                     (tree_width_ + default_node_diameter + MainWindow::margin);
         }
         RecursiveDraw(tree->root);
         main_window_ptr_->tree_view_->show();
@@ -233,7 +214,7 @@ namespace DSVisualization {
         brush.setStyle(Qt::SolidPattern);
         pen.setColor(node->outside_color);
         main_window_ptr_->tree_view_->scene()->addEllipse(node->x, node->y, current_node_diameter_,
-                                        current_node_diameter_, pen, brush);
+                                                          current_node_diameter_, pen, brush);
         auto* text = new QGraphicsTextItem(std::to_string(node->key).c_str());
         auto rect = text->boundingRect();
         text->setPos(node->x - rect.width() / 2 + current_node_diameter_ / 2,
@@ -264,8 +245,10 @@ namespace DSVisualization {
         if (!node) {
             return;
         }
-        if (tree_width_ + default_node_diameter + margin >= static_cast<float>(main_window_ptr_->current_width_)) {
-            node->x = node->x / (tree_width_ + default_node_diameter + margin) * main_window_ptr_->current_width_;
+        if (tree_width_ + default_node_diameter + MainWindow::margin >=
+            static_cast<float>(main_window_ptr_->current_width_)) {
+            node->x = node->x / (tree_width_ + default_node_diameter + MainWindow::margin) *
+                      main_window_ptr_->current_width_;
         }
         RecursiveDraw(node->left);
         if (node->left) {

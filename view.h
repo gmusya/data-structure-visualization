@@ -32,16 +32,17 @@ namespace DSVisualization {
     class View : public QGraphicsView {
     public:
         explicit View(MainWindow* main_window);
+        View() = delete;
+        View(const View&) = delete;
+        View& operator=(const View&) = delete;
+        View(View&&) = delete;
+        View& operator=(View&&) = delete;
 
         [[nodiscard]] Observer<RedBlackTree<int>::Data>* GetObserver();
         void SubscribeToQuery(Observer<TreeQuery>* observer_view_controller);
 
     private:
         void OnNotifyFromModel(const RedBlackTree<int>::Data& value);
-
-        void SetEnabledButtons(bool flag);
-        void DisableButtons();
-        void EnableButtons();
 
         void OnInsertButtonPushed();
         void OnEraseButtonPushed();
@@ -61,7 +62,6 @@ namespace DSVisualization {
         static constexpr float default_node_diameter = 50;
         static constexpr float horizontal_space_between_nodes = 5;
         static constexpr float vertical_space_between_nodes = 3;
-        static constexpr float margin = 40;
         static constexpr int draw_delay_in_ms = 500;
         float tree_width_ = 0;
         float current_node_diameter_ = default_node_diameter;
