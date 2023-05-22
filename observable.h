@@ -41,6 +41,14 @@ namespace DSVisualization {
             }
         }
 
+        void Set(T data) {
+            [[maybe_unused]] int x = 5;
+            data_ = [d = std::move(data)]() {
+                return d;
+            };
+            Notify();
+        }
+
     private:
         void Detach(Observer<T>* obs) {
             obs->on_unsubscribe_(data_());

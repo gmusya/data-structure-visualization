@@ -34,7 +34,7 @@ namespace DSVisualization {
 
         RedBlackTree()
             : port_([this]() {
-                  return this->tree_info_;
+                  return TreeInfo<T>{0, nullptr, {}};
               }) {
             PRINT_WHERE_AM_I();
         }
@@ -44,48 +44,40 @@ namespace DSVisualization {
         }
 
         bool Insert(const T& value) {
-            ClearTreeInfo();
             if (!root_) {
                 root_ = std::unique_ptr<Node>(
                         new Node{nullptr, nullptr, nullptr, value, Color::black});
                 ++size_;
-                SetNodeStatus(root_.get(), Status::current);
-                tree_info_.root = Root();
-                Send();
-                SetNodeStatus(root_.get(), Status::touched);
-                Send();
+                TreeInfo<T> tree_info{size_, root_.get(), {}};
+                port_.Set(tree_info.SetNodeStatus(root_.get(), Status::current));
+                port_.Set(tree_info.SetNodeStatus(root_.get(), Status::touched));
                 return true;
             }
-            SetNodeStatus(root_.get(), Status::current);
-            Send();
-            NodePtr parent = SearchNearValue(value);
+            TreeInfo<T> tree_info{size_, root_.get(), {}};
+            NodePtr parent = SearchNearValue(value, &tree_info);
             if (parent != nullptr && parent->value == value) {
                 return false;
             }
             ++size_;
             auto node = new Node{parent, nullptr, nullptr, value, Color::red};
-            SetNodeStatus(node, Status::current);
+            port_.Set(tree_info.SetNodeStatus(node, Status::current));
             (value < parent->value ? parent->left : parent->right) = std::unique_ptr<Node>(node);
-            Send();
             while (true) {
                 if (!parent || parent->color == Color::black) {
                     if (!parent) {
                         node->color = Color::black;
                     }
-                    tree_info_.root = Root();
-                    Send();
-                    SetNodeStatus(node, Status::touched);
-                    Send();
+                    tree_info.root = Root();
+                    port_.Set(tree_info.SetNodeStatus(node, Status::touched));
                     return true;
                 }
                 if (node->GetUncle() && node->GetUncle()->color == Color::red) {
                     node->GetUncle()->color = Color::black;
                     node->parent->color = Color::black;
                     node->parent->parent->color = Color::red;
-                    SetNodeStatus(node, Status::touched);
+                    tree_info.SetNodeStatus(node, Status::touched);
                     node = node->parent->parent;
-                    SetNodeStatus(node, Status::current);
-                    Send();
+                    port_.Set(tree_info.SetNodeStatus(node, Status::current));
                     parent = node->parent;
                 } else {
                     break;
@@ -95,46 +87,39 @@ namespace DSVisualization {
             Kid node_parent = node->parent->WhichKid(node);
             if (node_parent == Opposite(parent_grandparent)) {
                 Rotate(node, parent_grandparent);
-                SetNodeStatus(node, Status::touched);
+                tree_info.SetNodeStatus(node, Status::touched);
                 node = GetKid(node, parent_grandparent).get();
-                SetNodeStatus(node, Status::current);
-                Send();
+                port_.Set(tree_info.SetNodeStatus(node, Status::current));
             }
             Rotate(node->parent, Opposite(parent_grandparent));
             node->parent->color = Color::black;
             GetKid(node->parent, Opposite(parent_grandparent))->color = Color::red;
             if (!node->parent->parent) {
-                tree_info_.root = Root();
+                tree_info.root = Root();
             }
-            Send();
-            SetNodeStatus(node, Status::touched);
-            Send();
+            port_.Set(tree_info.SetNodeStatus(node, Status::touched));
             return true;
         }
 
         bool Erase(const T& value) {
-            ClearTreeInfo();
-            NodePtr node = SearchNearValue(value);
+            TreeInfo<T> tree_info{size_, root_.get(), {}};
+            NodePtr node = SearchNearValue(value, &tree_info);
             if (!node || node->value != value) {
                 return false;
             }
-            SetNodeStatus(node, Status::to_delete);
-            Send();
+            port_.Set(tree_info.SetNodeStatus(node, Status::to_delete));
             --size_;
             if (NodePtr node_to_delete = GetNearestLeaf(node)) {
-                SetNodeStatus(node_to_delete, Status::current);
-                Send();
-                SetNodeStatus(node_to_delete, Status::to_delete);
-                SetNodeStatus(node, Status::current);
-                Send();
+                port_.Set(tree_info.SetNodeStatus(node_to_delete, Status::current));
+                tree_info.SetNodeStatus(node_to_delete, Status::to_delete);
+                port_.Set(tree_info.SetNodeStatus(node, Status::current));
                 node->value = node_to_delete->value;
-                SetNodeStatus(node, Status::touched);
-                Send();
+                port_.Set(tree_info.SetNodeStatus(node, Status::touched));
                 node = node_to_delete;
             }
             if (!node->parent) {
                 root_ = nullptr;
-                tree_info_.root = nullptr;
+                tree_info.root = nullptr;
                 return true;
             }
             Kid kid = node->parent->WhichKid(node);
@@ -146,13 +131,12 @@ namespace DSVisualization {
             }
             std::unique_ptr<Node> tmp(node);
             if (node->color == Color::red) {
-                Send();
+                port_.Set(tree_info);
                 return true;
             }
             NodePtr parent = node->parent;
             node = ptr;
-            SetNodeStatus(node, Status::current);
-            Send();
+            port_.Set(tree_info.SetNodeStatus(node, Status::current));
             while (parent) {
                 kid = parent->WhichKid(node);
                 NodePtr sibling = GetKid(parent, Opposite(kid)).get();
@@ -161,8 +145,8 @@ namespace DSVisualization {
                     sibling->color = Color::black;
                     Rotate(sibling, kid);
                     sibling = GetKid(parent, Opposite(kid)).get();
-                    tree_info_.root = root_.get();
-                    Send();
+                    tree_info.root = root_.get();
+                    port_.Set(tree_info);
                 }
                 if (GetNodeColor(sibling->left.get()) == Color::black &&
                     GetNodeColor(sibling->right.get()) == Color::black) {
@@ -170,41 +154,41 @@ namespace DSVisualization {
                         sibling->color = Color::red;
                         node = parent;
                         parent = node->parent;
-                        SetNodeStatus(node, Status::current);
-                        Send();
+                        port_.Set(tree_info.SetNodeStatus(node, Status::current));
                         continue;
                     } else {
                         parent->color = Color::black;
                         sibling->color = Color::red;
-                        Send();
+                        port_.Set(tree_info);
                         return true;
                     }
                 }
                 if (GetNodeColor(GetKid(sibling, kid).get()) == Color::red &&
                     GetNodeColor(GetKid(sibling, Opposite(kid)).get()) == Color::black) {
                     Rotate(GetKid(sibling, kid).get(), Opposite(kid));
-                    Send();
+                    port_.Set(tree_info);
                     sibling->color = Color::red;
                     sibling->parent->color = Color::black;
                     sibling = sibling->parent;
-                    Send();
+                    port_.Set(tree_info);
                 }
                 Color color = parent->color;
                 Rotate(sibling, kid);
-                Send();
+                port_.Set(tree_info);
                 parent->color = Color::black;
                 GetKid(sibling, Opposite(kid))->color = Color::black;
                 parent->parent->color = color;
-                tree_info_.root = root_.get();
-                Send();
+                tree_info.root = root_.get();
+                port_.Set(tree_info);
                 return true;
             }
             return true;
         }
 
         bool Find(const T& value) {
-            ClearTreeInfo();
-            return SearchNearValue(value) != nullptr && SearchNearValue(value)->value == value;
+            TreeInfo<T> tree_info{size_, root_.get(), {}};
+            auto result = SearchNearValue(value, &tree_info);
+            return result != nullptr && result->value == value;
         }
 
         [[nodiscard]] size_t Size() const {
@@ -269,6 +253,7 @@ namespace DSVisualization {
          */
         void RotateLeft(typename RedBlackTree<T>::Node* d) {
             PRINT_WHERE_AM_I();
+            TreeInfo<T> tree_info{size_, root_.get(), {}};
             auto current_tree_info = GetTreeInfo(*this);
             NodePtr b = d->parent;
             NodePtr c = d->left.get();
@@ -277,12 +262,11 @@ namespace DSVisualization {
             if (pp) {
                 kid = pp->WhichKid(b);
             }
-            SetNodeStatus(b, Status::rotate, &current_tree_info);
-            SetNodeStatus(b->left.get(), Status::rotate, &current_tree_info);
-            SetNodeStatus(d, Status::rotate, &current_tree_info);
-            SetNodeStatus(d->left.get(), Status::rotate, &current_tree_info);
-            SetNodeStatus(d->right.get(), Status::rotate, &current_tree_info);
-            Send(current_tree_info);
+            port_.Set(tree_info.SetNodeStatus(b, Status::rotate)
+                              .SetNodeStatus(b->left.get(), Status::rotate)
+                              .SetNodeStatus(d, Status::rotate)
+                              .SetNodeStatus(d->left.get(), Status::rotate)
+                              .SetNodeStatus(d->right.get(), Status::rotate));
             NodePtr old_root = root_.release();
             d->left.release();
             b->right.release();
@@ -303,8 +287,7 @@ namespace DSVisualization {
                 }
             }
             root_.reset(UpdateRoot(old_root));
-            tree_info_.root = root_.get();
-            Send(current_tree_info);
+            tree_info.root = root_.get();
         }
 
         /*
@@ -318,6 +301,7 @@ namespace DSVisualization {
          */
         void RotateRight(typename RedBlackTree<T>::Node* b) {
             PRINT_WHERE_AM_I();
+            TreeInfo<T> tree_info{size_, root_.get(), {}};
             auto current_tree_info = GetTreeInfo(*this);
             NodePtr d = b->parent;
             NodePtr c = b->right.get();
@@ -326,12 +310,11 @@ namespace DSVisualization {
             if (pp) {
                 kid = pp->WhichKid(d);
             }
-            SetNodeStatus(d, Status::rotate, &current_tree_info);
-            SetNodeStatus(b, Status::rotate, &current_tree_info);
-            SetNodeStatus(b->left.get(), Status::rotate, &current_tree_info);
-            SetNodeStatus(b->right.get(), Status::rotate, &current_tree_info);
-            SetNodeStatus(d->right.get(), Status::rotate, &current_tree_info);
-            Send(current_tree_info);
+            port_.Set(tree_info.SetNodeStatus(d, Status::rotate)
+                              .SetNodeStatus(b, Status::rotate)
+                              .SetNodeStatus(b->left.get(), Status::rotate)
+                              .SetNodeStatus(b->right.get(), Status::rotate)
+                              .SetNodeStatus(d->right.get(), Status::rotate));
             NodePtr old_root = root_.release();
             d->left.release();
             b->right.release();
@@ -352,16 +335,14 @@ namespace DSVisualization {
                 }
             }
             root_.reset(UpdateRoot(old_root));
-            tree_info_.root = root_.get();
-            Send(current_tree_info);
+            tree_info.root = root_.get();
         }
 
-        NodePtr SearchNearValue(const T& value) {
+        NodePtr SearchNearValue(const T& value, TreeInfo<T>* tree_info) {
             NodePtr node = root_.get();
-            SetNodeStatus(node, Status::current);
-            Send();
+            port_.Set(tree_info->SetNodeStatus(node, Status::current));
             while (node) {
-                SetNodeStatus(node, Status::touched);
+                tree_info->SetNodeStatus(node, Status::touched);
                 if (value < node->value) {
                     if (!node->left) {
                         break;
@@ -375,22 +356,9 @@ namespace DSVisualization {
                     }
                     node = node->right.get();
                 }
-                SetNodeStatus(node, Status::current);
-                Send();
+                port_.Set(tree_info->SetNodeStatus(node, Status::current));
             }
             return node;
-        }
-
-        void Send() {
-            tree_info_.tree_size = size_;
-            tree_info_.root = root_.get();
-            port_.Notify();
-        }
-
-        void Send(TreeInfo<T>& tree_info) {
-            std::swap(tree_info_, tree_info);
-            Send();
-            std::swap(tree_info_, tree_info);
         }
 
     public:
@@ -623,21 +591,8 @@ namespace DSVisualization {
             return node->color;
         }
 
-        void SetNodeStatus(NodePtr node, Status status) {
-            tree_info_.node_to_status[node] = status;
-        }
-
-        void SetNodeStatus(NodePtr node, Status status, TreeInfo<T>* tree_info) {
-            tree_info->node_to_status[node] = status;
-        }
-
-        void ClearTreeInfo() {
-            tree_info_.node_to_status.clear();
-        }
-
         std::unique_ptr<Node> root_ = nullptr;
         Observable<TreeInfo<T>> port_;
-        TreeInfo<T> tree_info_;
         size_t size_ = 0;
     };
 
@@ -646,6 +601,11 @@ namespace DSVisualization {
         size_t tree_size = 0;
         const RedBlackTree<T>::Node* root = nullptr;
         std::map<const typename RedBlackTree<T>::Node*, Status> node_to_status;
+
+        TreeInfo<T>& SetNodeStatus(const typename RedBlackTree<T>::Node* node, Status status) {
+            node_to_status[node] = status;
+            return *this;
+        }
     };
 
     template<typename T>
