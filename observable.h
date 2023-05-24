@@ -41,7 +41,7 @@ namespace DSVisualization {
             }
         }
 
-        void Set(const T& data) {
+        void Send(const T& data) {
             data_ = [&data]() {
                 return data;
             };
