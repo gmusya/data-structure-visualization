@@ -41,10 +41,9 @@ namespace DSVisualization {
             }
         }
 
-        void Set(T data) {
-            [[maybe_unused]] int x = 5;
-            data_ = [d = std::move(data)]() {
-                return d;
+        void Set(const T& data) {
+            data_ = [&data]() {
+                return data;
             };
             Notify();
         }
