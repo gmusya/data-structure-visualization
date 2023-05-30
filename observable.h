@@ -41,9 +41,9 @@ namespace DSVisualization {
             }
         }
 
-        void Send(const T& data) {
-            data_ = [&data]() {
-                return data;
+        void Send(T data) {
+            data_ = [d = std::move(data)]() {
+                return d;
             };
             Notify();
         }

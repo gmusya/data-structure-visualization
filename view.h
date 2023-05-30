@@ -65,7 +65,6 @@ namespace DSVisualization {
         static constexpr int draw_delay_in_ms = 500;
         float tree_width_ = 0;
         float current_node_diameter_ = default_node_diameter;
-        int trees_to_show_counter_ = 0;
         TreeQuery query_;
         MainWindow* main_window_ptr_;
         Observer<RedBlackTree<int>::Data> observer_model_view_;

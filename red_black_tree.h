@@ -18,7 +18,7 @@
 
 namespace DSVisualization {
     enum class Color { red, black };
-    enum class Status { initial, touched, current, to_delete, rotate };
+    enum class Status { initial, touched, current, to_delete, rotate, found };
     enum class Kid { left, right, non };
 
     template<typename T>
@@ -33,7 +33,7 @@ namespace DSVisualization {
         using ObserverModelViewPtr = Observer<Data>*;
 
         RedBlackTree()
-            : port_([this]() {
+            : port_([]() {
                   return TreeInfo<T>{0, nullptr, {}};
               }) {
             PRINT_WHERE_AM_I();
@@ -186,7 +186,12 @@ namespace DSVisualization {
         bool Find(const T& value) {
             TreeInfo<T> tree_info{size_, root_.get(), {}};
             auto result = SearchNearValue(value, &tree_info);
-            return result != nullptr && result->value == value;
+            if (result != nullptr && result->value == value) {
+                port_.Send(tree_info.SetNodeStatus(result, Status::found));
+                return true;
+            } else {
+                return false;
+            }
         }
 
         [[nodiscard]] size_t Size() const {

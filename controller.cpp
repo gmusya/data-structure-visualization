@@ -9,12 +9,6 @@ namespace DSVisualization {
         : observer_view_controller_(
                   [this](const TreeQuery& x) {
                       OnNotifyFromView(x);
-                  },
-                  [this](const TreeQuery& x) {
-                      OnNotifyFromView(x);
-                  },
-                  [this](const TreeQuery& x) {
-                      OnNotifyFromView(x);
                   }),
           model_ptr_(&model) {
         PRINT_WHERE_AM_I();

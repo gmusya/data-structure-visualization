@@ -24,6 +24,8 @@ namespace DSVisualization {
                     return Qt::GlobalColor::yellow;
                 case DSVisualization::Status::rotate:
                     return Qt::GlobalColor::magenta;
+                case DSVisualization::Status::found:
+                    return Qt::GlobalColor::cyan;
                 default:
                     return Qt::GlobalColor::transparent;
             }
@@ -67,6 +69,14 @@ namespace DSVisualization {
         return &observer_model_view_;
     }
 
+    static void Delay(int milliseconds) {
+        QEventLoop loop;
+        QTimer t;
+        QTimer::connect(&t, &QTimer::timeout, &loop, &QEventLoop::quit);
+        t.start(milliseconds);
+        loop.exec();
+    }
+
     void View::OnNotifyFromModel(const RedBlackTree<int>::Data& value) {
         PRINT_WHERE_AM_I();
         float counter = 0;
@@ -74,14 +84,8 @@ namespace DSVisualization {
                       (horizontal_space_between_nodes + default_node_diameter);
         std::unique_ptr<DrawableTree> result =
                 std::make_unique<DrawableTree>(GetDrawableNode(value, value.root, 0, counter));
-        ++trees_to_show_counter_;
-        QTimer::singleShot(trees_to_show_counter_ * draw_delay_in_ms, this,
-                           [this, result = std::move(result)]() {
-                               this->DrawTree(result);
-                               if (--trees_to_show_counter_ == 0) {
-                                   main_window_ptr_->EnableButtons();
-                               }
-                           });
+        this->DrawTree(result);
+        Delay(draw_delay_in_ms);
     }
 
     void View::SubscribeToQuery(Observer<TreeQuery>* observer_view_controller) {
@@ -158,9 +162,7 @@ namespace DSVisualization {
             QMessageBox messageBox;
             QMessageBox::critical(nullptr, "Error", std::get<std::string>(value).c_str());
         }
-        if (trees_to_show_counter_ == 0) {
-            main_window_ptr_->EnableButtons();
-        }
+        main_window_ptr_->EnableButtons();
     }
 
     std::unique_ptr<DrawableNode> View::GetDrawableNode(const TreeInfo<int>& tree_info,
