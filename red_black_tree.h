@@ -85,11 +85,15 @@ namespace DSVisualization {
             Kid node_parent = node->parent->WhichKid(node);
             if (node_parent == Opposite(parent_grandparent)) {
                 Rotate(node, parent_grandparent);
+                tree_info.root = Root();
+                port_.Send(tree_info);
                 tree_info.SetNodeStatus(node, Status::touched);
                 node = GetKid(node, parent_grandparent).get();
                 port_.Send(tree_info.SetNodeStatus(node, Status::current));
             }
             Rotate(node->parent, Opposite(parent_grandparent));
+            tree_info.root = Root();
+            port_.Send(tree_info);
             node->parent->color = Color::black;
             GetKid(node->parent, Opposite(parent_grandparent))->color = Color::red;
             if (!node->GetGrandParent()) {
@@ -118,6 +122,7 @@ namespace DSVisualization {
             if (!node->parent) {
                 root_ = nullptr;
                 tree_info.root = nullptr;
+                port_.Send(tree_info);
                 return true;
             }
             Kid kid = node->parent->WhichKid(node);
@@ -143,7 +148,7 @@ namespace DSVisualization {
                     sibling->color = Color::black;
                     Rotate(sibling, kid);
                     sibling = GetKid(parent, Opposite(kid)).get();
-                    tree_info.root = root_.get();
+                    tree_info.root = Root();
                     port_.Send(tree_info);
                 }
                 if (GetNodeColor(sibling->left.get()) == Color::black &&
@@ -164,6 +169,7 @@ namespace DSVisualization {
                 if (GetNodeColor(GetKid(sibling, kid).get()) == Color::red &&
                     GetNodeColor(GetKid(sibling, Opposite(kid)).get()) == Color::black) {
                     Rotate(GetKid(sibling, kid).get(), Opposite(kid));
+                    tree_info.root = Root();
                     port_.Send(tree_info);
                     sibling->color = Color::red;
                     sibling->parent->color = Color::black;
@@ -172,6 +178,7 @@ namespace DSVisualization {
                 }
                 Color color = parent->color;
                 Rotate(sibling, kid);
+                tree_info.root = Root();
                 port_.Send(tree_info);
                 parent->color = Color::black;
                 GetKid(sibling, Opposite(kid))->color = Color::black;
@@ -291,6 +298,7 @@ namespace DSVisualization {
             }
             root_.reset(UpdateRoot(old_root));
             tree_info.root = root_.get();
+            port_.Send(tree_info);
         }
 
         /*
@@ -339,6 +347,7 @@ namespace DSVisualization {
             }
             root_.reset(UpdateRoot(old_root));
             tree_info.root = root_.get();
+            port_.Send(tree_info);
         }
 
         NodePtr SearchNearValue(const T& value, TreeInfo<T>* tree_info) {
@@ -602,7 +611,7 @@ namespace DSVisualization {
     template<typename T>
     struct TreeInfo {
         size_t tree_size = 0;
-        const RedBlackTree<T>::Node* root = nullptr;
+        const typename RedBlackTree<T>::Node* root = nullptr;
         std::map<const typename RedBlackTree<T>::Node*, Status> node_to_status;
 
         TreeInfo<T>& SetNodeStatus(const typename RedBlackTree<T>::Node* node, Status status) {
