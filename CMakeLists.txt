@@ -8,11 +8,17 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
 set(ASAN OFF)
+set(TSAN OFF)
 set(EXCEPTION_HANDLING OFF)
 
 if (ASAN)
     add_compile_options(-fsanitize=address)
     add_link_options(-fsanitize=address)
+endif ()
+
+if (TSAN)
+    add_compile_options(-fsanitize=thread)
+    add_link_options(-fsanitize=thread)
 endif ()
 
 if (NOT EXCEPTION_HANDLING)
