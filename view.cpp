@@ -112,8 +112,8 @@ namespace DSVisualization {
     }
 
     namespace {
-        const int MIN_VALUE = -128;
-        const int MAX_VALUE = 127;
+        const int MIN_VALUE = -(1 << 15);
+        const int MAX_VALUE = (1 << 15) - 1;
         std::variant<int, std::string> string_to_int(const std::string& text) {
             if (text.empty()) {
                 return "Empty query";
@@ -135,7 +135,7 @@ namespace DSVisualization {
                     return "Value must be a number";
                 }
                 result = result * 10 + (text[i] - '0');
-                if (result > MAX_VALUE) {
+                if (result > MAX_VALUE * 10) {
                     return "Value must be in range from " + std::to_string(MIN_VALUE) + " to " +
                            std::to_string(MAX_VALUE);
                 }
