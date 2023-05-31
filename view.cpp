@@ -69,6 +69,12 @@ namespace DSVisualization {
         return &observer_model_view_;
     }
 
+    template<typename T>
+    static float IntegralToFloat(T value) {
+        static_assert(std::is_integral_v<T>);
+        return static_cast<float>(value);
+    }
+
     static void Delay(int milliseconds) {
         QEventLoop loop;
         QTimer t;
@@ -80,7 +86,7 @@ namespace DSVisualization {
     void View::OnNotifyFromModel(const RedBlackTree<int>::Data& value) {
         PRINT_WHERE_AM_I();
         float counter = 0;
-        tree_width_ = static_cast<float>(value.tree_size) *
+        tree_width_ = IntegralToFloat(value.tree_size) *
                       (horizontal_space_between_nodes + default_node_diameter);
         std::unique_ptr<DrawableTree> result = std::make_unique<DrawableTree>(
                 DrawableTree{GetDrawableNode(value, value.root, 0, counter)});
@@ -197,7 +203,7 @@ namespace DSVisualization {
         PRINT_WHERE_AM_I();
         main_window_.tree_view_->scene()->clear();
         current_node_diameter_ = default_node_diameter;
-        main_window_.current_width_ = static_cast<float>(size().width());
+        main_window_.current_width_ = IntegralToFloat(size().width());
         if (tree_width_ + default_node_diameter + MainWindow::margin >=
             main_window_.current_width_) {
             current_node_diameter_ = (default_node_diameter * main_window_.current_width_) /
@@ -248,7 +254,7 @@ namespace DSVisualization {
             return;
         }
         if (tree_width_ + default_node_diameter + MainWindow::margin >=
-            static_cast<float>(main_window_.current_width_)) {
+            main_window_.current_width_) {
             node->x = node->x / (tree_width_ + default_node_diameter + MainWindow::margin) *
                       main_window_.current_width_;
         }
