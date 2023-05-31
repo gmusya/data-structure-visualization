@@ -31,8 +31,7 @@ namespace DSVisualization {
 
     class View : public QGraphicsView {
     public:
-        explicit View(MainWindow* main_window);
-        View() = delete;
+        View();
         View(const View&) = delete;
         View& operator=(const View&) = delete;
         View(View&&) = delete;
@@ -66,7 +65,7 @@ namespace DSVisualization {
         float tree_width_ = 0;
         float current_node_diameter_ = default_node_diameter;
         TreeQuery query_;
-        MainWindow* main_window_ptr_;
+        MainWindow main_window_;
         Observer<RedBlackTree<int>::Data> observer_model_view_;
         Observable<TreeQuery> observable_view_controller_;
     };

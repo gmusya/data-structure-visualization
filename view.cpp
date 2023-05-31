@@ -40,27 +40,27 @@ namespace DSVisualization {
         }
     }// namespace
 
-    View::View(MainWindow* main_window)
-        : main_window_ptr_(main_window), observer_model_view_(
-                                                 [this](const RedBlackTree<int>::Data& x) {
-                                                     OnNotifyFromModel(x);
-                                                 },
-                                                 [this](const RedBlackTree<int>::Data& x) {
-                                                     OnNotifyFromModel(x);
-                                                 },
-                                                 [this](const RedBlackTree<int>::Data& x) {
-                                                     OnNotifyFromModel(x);
-                                                 }),
+    View::View()
+        : main_window_(), observer_model_view_(
+                                  [this](const RedBlackTree<int>::Data& x) {
+                                      OnNotifyFromModel(x);
+                                  },
+                                  [this](const RedBlackTree<int>::Data& x) {
+                                      OnNotifyFromModel(x);
+                                  },
+                                  [this](const RedBlackTree<int>::Data& x) {
+                                      OnNotifyFromModel(x);
+                                  }),
           observable_view_controller_([this]() {
               return this->query_;
           }) {
         PRINT_WHERE_AM_I();
 
-        QObject::connect(main_window_ptr_->insert_button_, &QPushButton::clicked, this,
+        QObject::connect(main_window_.insert_button_, &QPushButton::clicked, this,
                          &View::OnInsertButtonPushed);
-        QObject::connect(main_window_ptr_->erase_button_, &QPushButton::clicked, this,
+        QObject::connect(main_window_.erase_button_, &QPushButton::clicked, this,
                          &View::OnEraseButtonPushed);
-        QObject::connect(main_window_ptr_->find_button_, &QPushButton::clicked, this,
+        QObject::connect(main_window_.find_button_, &QPushButton::clicked, this,
                          &View::OnFindButtonPushed);
     }
 
@@ -82,8 +82,8 @@ namespace DSVisualization {
         float counter = 0;
         tree_width_ = static_cast<float>(value.tree_size) *
                       (horizontal_space_between_nodes + default_node_diameter);
-        std::unique_ptr<DrawableTree> result =
-                std::make_unique<DrawableTree>(GetDrawableNode(value, value.root, 0, counter));
+        std::unique_ptr<DrawableTree> result = std::make_unique<DrawableTree>(
+                DrawableTree{GetDrawableNode(value, value.root, 0, counter)});
         this->DrawTree(result);
         Delay(draw_delay_in_ms);
     }
@@ -95,19 +95,19 @@ namespace DSVisualization {
 
     void View::OnInsertButtonPushed() {
         PRINT_WHERE_AM_I();
-        std::string str = GetTextAndClear(main_window_ptr_->insert_line_edit_);
+        std::string str = GetTextAndClear(main_window_.insert_line_edit_);
         HandlePushButton(TreeQueryType::insert, std::ref(str));
     }
 
     void View::OnEraseButtonPushed() {
         PRINT_WHERE_AM_I();
-        std::string str = GetTextAndClear(main_window_ptr_->erase_line_edit_);
+        std::string str = GetTextAndClear(main_window_.erase_line_edit_);
         HandlePushButton(TreeQueryType::erase, str);
     }
 
     void View::OnFindButtonPushed() {
         PRINT_WHERE_AM_I();
-        std::string str = GetTextAndClear(main_window_ptr_->find_line_edit_);
+        std::string str = GetTextAndClear(main_window_.find_line_edit_);
         HandlePushButton(TreeQueryType::find, str);
     }
 
@@ -153,7 +153,7 @@ namespace DSVisualization {
 
     void View::HandlePushButton(TreeQueryType query_type, const std::string& text) {
         PRINT_WHERE_AM_I();
-        main_window_ptr_->DisableButtons();
+        main_window_.DisableButtons();
         std::variant<int, std::string> value = string_to_int(text);
         if (value.index() == 0) {
             query_ = {query_type, std::get<int>(value)};
@@ -162,7 +162,7 @@ namespace DSVisualization {
             QMessageBox messageBox;
             QMessageBox::critical(nullptr, "Error", std::get<std::string>(value).c_str());
         }
-        main_window_ptr_->EnableButtons();
+        main_window_.EnableButtons();
     }
 
     std::unique_ptr<DrawableNode> View::GetDrawableNode(const TreeInfo<int>& tree_info,
@@ -195,16 +195,16 @@ namespace DSVisualization {
 
     void View::DrawTree(const std::unique_ptr<DrawableTree>& tree) {
         PRINT_WHERE_AM_I();
-        main_window_ptr_->tree_view_->scene()->clear();
+        main_window_.tree_view_->scene()->clear();
         current_node_diameter_ = default_node_diameter;
-        main_window_ptr_->current_width_ = static_cast<float>(size().width());
+        main_window_.current_width_ = static_cast<float>(size().width());
         if (tree_width_ + default_node_diameter + MainWindow::margin >=
-            main_window_ptr_->current_width_) {
-            current_node_diameter_ = (default_node_diameter * main_window_ptr_->current_width_) /
+            main_window_.current_width_) {
+            current_node_diameter_ = (default_node_diameter * main_window_.current_width_) /
                                      (tree_width_ + default_node_diameter + MainWindow::margin);
         }
         RecursiveDraw(tree->root);
-        main_window_ptr_->tree_view_->show();
+        main_window_.tree_view_->show();
     }
 
     void View::DrawNode(const std::unique_ptr<DrawableNode>& node) {
@@ -215,14 +215,14 @@ namespace DSVisualization {
         brush.setColor(node->inside_color);
         brush.setStyle(Qt::SolidPattern);
         pen.setColor(node->outside_color);
-        main_window_ptr_->tree_view_->scene()->addEllipse(node->x, node->y, current_node_diameter_,
-                                                          current_node_diameter_, pen, brush);
+        main_window_.tree_view_->scene()->addEllipse(node->x, node->y, current_node_diameter_,
+                                                     current_node_diameter_, pen, brush);
         auto* text = new QGraphicsTextItem(std::to_string(node->key).c_str());
         auto rect = text->boundingRect();
         text->setPos(node->x - rect.width() / 2 + current_node_diameter_ / 2,
                      node->y - rect.height() / 2 + current_node_diameter_ / 2);
         text->setDefaultTextColor(Qt::white);
-        main_window_ptr_->tree_view_->scene()->addItem(text);
+        main_window_.tree_view_->scene()->addItem(text);
     }
 
     void View::DrawEdgeBetweenNodes(const std::unique_ptr<DrawableNode>& parent,
@@ -239,8 +239,8 @@ namespace DSVisualization {
         auto* vertical_line = new QGraphicsLineItem(x2 + current_node_diameter_ / 2,
                                                     y1 + current_node_diameter_ / 2,
                                                     x2 + current_node_diameter_ / 2, y2);
-        main_window_ptr_->tree_view_->scene()->addItem(horizontal_line);
-        main_window_ptr_->tree_view_->scene()->addItem(vertical_line);
+        main_window_.tree_view_->scene()->addItem(horizontal_line);
+        main_window_.tree_view_->scene()->addItem(vertical_line);
     }
 
     void View::RecursiveDraw(const std::unique_ptr<DrawableNode>& node) {
@@ -248,9 +248,9 @@ namespace DSVisualization {
             return;
         }
         if (tree_width_ + default_node_diameter + MainWindow::margin >=
-            static_cast<float>(main_window_ptr_->current_width_)) {
+            static_cast<float>(main_window_.current_width_)) {
             node->x = node->x / (tree_width_ + default_node_diameter + MainWindow::margin) *
-                      main_window_ptr_->current_width_;
+                      main_window_.current_width_;
         }
         RecursiveDraw(node->left);
         if (node->left) {

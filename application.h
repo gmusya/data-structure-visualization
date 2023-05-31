@@ -1,7 +1,6 @@
 #pragma once
 
 #include "controller.h"
-#include "main_window.h"
 #include "red_black_tree.h"
 #include "view.h"
 
@@ -20,7 +19,6 @@ namespace DSVisualization {
         ~Application();
 
     private:
-        MainWindow main_window_;
         RedBlackTree<int> model_;
         View view_;
         Controller controller_;
