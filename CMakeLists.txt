@@ -9,7 +9,16 @@ set(CMAKE_AUTOUIC ON)
 
 set(ASAN OFF)
 set(TSAN OFF)
+set(LOGGING ON)
 set(EXCEPTION_HANDLING OFF)
+
+if (NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    set(LOGGING OFF)
+endif()
+
+if (NOT LOGGING)
+    add_compile_definitions(NO_LOGGING)
+endif()
 
 if (ASAN)
     add_compile_options(-fsanitize=address)
