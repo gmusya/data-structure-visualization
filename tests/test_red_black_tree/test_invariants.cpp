@@ -1,7 +1,7 @@
 #define INVARIANTS_CHECK
 #define NO_LOGGING
 
-#include "../red_black_tree.h"
+#include "../../red_black_tree.h"
 
 #include <numeric>
 #include <random>

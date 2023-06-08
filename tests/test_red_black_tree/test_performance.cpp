@@ -1,6 +1,6 @@
 #define NO_LOGGING
-#include "../red_black_tree.h"
-#include "../time_wrapper.h"
+#include "../../red_black_tree.h"
+#include "../../time_wrapper.h"
 
 #include <iomanip>
 #include <set>

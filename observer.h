@@ -42,12 +42,13 @@ namespace DSVisualization {
             return observable_;
         }
 
+        static void do_nothing(T){};
+
     private:
         void SetObservable(Observable<T>* observable) {
             observable_ = observable;
         }
 
-        static void do_nothing(T){};
         using Action = std::function<void(T)>;
 
         Observable<T>* observable_ = nullptr;
