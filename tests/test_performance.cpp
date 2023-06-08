@@ -22,8 +22,8 @@ namespace DSVisualization {
         for (int n : {10, 1'000, 200'000, 1'000'000}) {
             clock_t time = 0;
             TestTime(foo1, time).call(n);
-            std::cout << "n = " << n << ": " << time / CLOCKS_PER_SEC << "."
-                      << time % CLOCKS_PER_SEC << "\n";
+            std::cout << "n = " << n << ": " << time / CLOCKS_PER_SEC << "." << std::setw(6)
+                      << std::setfill('0') << time % CLOCKS_PER_SEC << "\n";
         }
         auto foo2 = [](int n) {
             std::set<int32_t> rb_tree;
@@ -37,8 +37,8 @@ namespace DSVisualization {
         for (int n : {10, 1'000, 200'000, 1'000'000}) {
             clock_t time = 0;
             TestTime(foo2, time).call(n);
-            std::cout << "n = " << n << ": " << time / CLOCKS_PER_SEC << "."
-                      << time % CLOCKS_PER_SEC << "\n";
+            std::cout << "n = " << n << ": " << time / CLOCKS_PER_SEC << "." << std::setw(6)
+                      << std::setfill('0') << time % CLOCKS_PER_SEC << "\n";
         }
     }
 }// namespace DSVisualization
