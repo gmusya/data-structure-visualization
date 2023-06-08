@@ -41,7 +41,14 @@ namespace DSVisualization {
             }
         }
 
-        void Send(T data) {
+        void SendByReference(const T& data) {
+            data_ = [&data]() {
+                return data;
+            };
+            Notify();
+        }
+
+        void SendByValue(T data) {
             data_ = [d = std::move(data)]() {
                 return d;
             };
