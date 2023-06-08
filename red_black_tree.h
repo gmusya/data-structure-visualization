@@ -25,6 +25,9 @@ namespace DSVisualization {
     struct TreeInfo;
 
     template<typename T>
+    class TreeInfoWrapper;
+
+    template<typename T>
     class RedBlackTree {
     public:
         struct Node;
@@ -47,30 +50,12 @@ namespace DSVisualization {
             port_.Subscribe(observer);
         }
 
-        class TreeInfoWrapper : public TreeInfo<T> {
-        public:
-            TreeInfoWrapper(TreeInfo<T> tree_info, std::function<void(TreeInfo<T>)> deleter)
-                : TreeInfo<T>(std::move(tree_info)), deleter_(std::move(deleter)) {
-            }
-
-            TreeInfo<T>& GetTreeInfo() {
-                return *static_cast<TreeInfo<T>*>(this);
-            }
-
-            ~TreeInfoWrapper() {
-                deleter_(std::move(GetTreeInfo()));
-            }
-
-        private:
-            std::function<void(TreeInfo<T>)> deleter_;
-        };
-
         bool Insert(const T& value) {
             if (!root_) {
                 root_ = std::unique_ptr<Node>(
                         new Node{nullptr, nullptr, nullptr, value, Color::black});
                 ++size_;
-                TreeInfoWrapper tree_info_wrapper({size_, root_.get(), {}},
+                TreeInfoWrapper<T> tree_info_wrapper({size_, root_.get(), {}},
                                                   [this](TreeInfo<T> tree_info) {
                                                       port_.SendByValue(std::move(tree_info));
                                                   });
@@ -80,7 +65,7 @@ namespace DSVisualization {
                         tree_info_wrapper.SetNodeStatus(root_.get(), Status::touched));
                 return true;
             }
-            TreeInfoWrapper tree_info_wrapper({size_, root_.get(), {}},
+            TreeInfoWrapper<T> tree_info_wrapper({size_, root_.get(), {}},
                                               [this](TreeInfo<T> tree_info) {
                                                   port_.SendByValue(std::move(tree_info));
                                               });
@@ -134,7 +119,7 @@ namespace DSVisualization {
         }
 
         bool Erase(const T& value) {
-            TreeInfoWrapper tree_info_wrapper({size_, root_.get(), {}},
+            TreeInfoWrapper<T> tree_info_wrapper({size_, root_.get(), {}},
                                               [this](TreeInfo<T> tree_info) {
                                                   port_.SendByValue(std::move(tree_info));
                                               });
@@ -226,7 +211,7 @@ namespace DSVisualization {
         }
 
         bool Find(const T& value) {
-            TreeInfoWrapper tree_info_wrapper({size_, root_.get(), {}},
+            TreeInfoWrapper<T> tree_info_wrapper({size_, root_.get(), {}},
                                               [this](TreeInfo<T> tree_info) {
                                                   port_.SendByValue(std::move(tree_info));
                                               });
@@ -301,7 +286,7 @@ namespace DSVisualization {
          */
         void RotateLeft(typename RedBlackTree<T>::Node* d) {
             PRINT_WHERE_AM_I();
-            TreeInfoWrapper tree_info_wrapper({size_, root_.get(), {}},
+            TreeInfoWrapper<T> tree_info_wrapper({size_, root_.get(), {}},
                                               [this](TreeInfo<T> tree_info) {
                                                   port_.SendByValue(std::move(tree_info));
                                               });
@@ -353,7 +338,7 @@ namespace DSVisualization {
          */
         void RotateRight(typename RedBlackTree<T>::Node* b) {
             PRINT_WHERE_AM_I();
-            TreeInfoWrapper tree_info_wrapper({size_, root_.get(), {}},
+            TreeInfoWrapper<T> tree_info_wrapper({size_, root_.get(), {}},
                                               [this](TreeInfo<T> tree_info) {
                                                   port_.SendByValue(std::move(tree_info));
                                               });
@@ -650,6 +635,25 @@ namespace DSVisualization {
         std::unique_ptr<Node> root_ = nullptr;
         Observable<TreeInfo<T>> port_;
         size_t size_ = 0;
+    };
+
+    template<typename T>
+    class TreeInfoWrapper : public TreeInfo<T> {
+    public:
+        TreeInfoWrapper(TreeInfo<T> tree_info, std::function<void(TreeInfo<T>)> deleter)
+            : TreeInfo<T>(std::move(tree_info)), deleter_(std::move(deleter)) {
+        }
+
+        TreeInfo<T>& GetTreeInfo() {
+            return *static_cast<TreeInfo<T>*>(this);
+        }
+
+        ~TreeInfoWrapper() {
+            deleter_(std::move(GetTreeInfo()));
+        }
+
+    private:
+        std::function<void(TreeInfo<T>)> deleter_;
     };
 
     template<typename T>
