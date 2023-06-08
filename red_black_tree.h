@@ -49,7 +49,7 @@ namespace DSVisualization {
 
         class TreeInfoWrapper : public TreeInfo<T> {
         public:
-            TreeInfoWrapper(TreeInfo<T> tree_info, std::function<void(const TreeInfo<T>&)> deleter)
+            TreeInfoWrapper(TreeInfo<T> tree_info, std::function<void(TreeInfo<T>)> deleter)
                 : TreeInfo<T>(std::move(tree_info)), deleter_(std::move(deleter)) {
             }
 
@@ -58,11 +58,11 @@ namespace DSVisualization {
             }
 
             ~TreeInfoWrapper() {
-                deleter_(GetTreeInfo());
+                deleter_(std::move(GetTreeInfo()));
             }
 
         private:
-            std::function<void(const TreeInfo<T>&)> deleter_;
+            std::function<void(TreeInfo<T>)> deleter_;
         };
 
         bool Insert(const T& value) {
@@ -71,8 +71,8 @@ namespace DSVisualization {
                         new Node{nullptr, nullptr, nullptr, value, Color::black});
                 ++size_;
                 TreeInfoWrapper tree_info_wrapper({size_, root_.get(), {}},
-                                                  [this](const TreeInfo<T>& tree_info) {
-                                                      port_.SendByValue(tree_info);
+                                                  [this](TreeInfo<T> tree_info) {
+                                                      port_.SendByValue(std::move(tree_info));
                                                   });
                 port_.SendByReference(
                         tree_info_wrapper.SetNodeStatus(root_.get(), Status::current));
@@ -81,8 +81,8 @@ namespace DSVisualization {
                 return true;
             }
             TreeInfoWrapper tree_info_wrapper({size_, root_.get(), {}},
-                                              [this](const TreeInfo<T>& tree_info) {
-                                                  port_.SendByValue(tree_info);
+                                              [this](TreeInfo<T> tree_info) {
+                                                  port_.SendByValue(std::move(tree_info));
                                               });
             NodePtr parent = SearchNearValue(value, static_cast<TreeInfo<T>*>(&tree_info_wrapper));
             if (parent != nullptr && parent->value == value) {
@@ -135,8 +135,8 @@ namespace DSVisualization {
 
         bool Erase(const T& value) {
             TreeInfoWrapper tree_info_wrapper({size_, root_.get(), {}},
-                                              [this](const TreeInfo<T>& tree_info) {
-                                                  port_.SendByValue(tree_info);
+                                              [this](TreeInfo<T> tree_info) {
+                                                  port_.SendByValue(std::move(tree_info));
                                               });
             NodePtr node = SearchNearValue(value, &tree_info_wrapper.GetTreeInfo());
             if (!node || node->value != value) {
@@ -227,8 +227,8 @@ namespace DSVisualization {
 
         bool Find(const T& value) {
             TreeInfoWrapper tree_info_wrapper({size_, root_.get(), {}},
-                                              [this](const TreeInfo<T>& tree_info) {
-                                                  port_.SendByValue(tree_info);
+                                              [this](TreeInfo<T> tree_info) {
+                                                  port_.SendByValue(std::move(tree_info));
                                               });
             auto result = SearchNearValue(value, &tree_info_wrapper.GetTreeInfo());
             if (result != nullptr && result->value == value) {
@@ -302,8 +302,8 @@ namespace DSVisualization {
         void RotateLeft(typename RedBlackTree<T>::Node* d) {
             PRINT_WHERE_AM_I();
             TreeInfoWrapper tree_info_wrapper({size_, root_.get(), {}},
-                                              [this](const TreeInfo<T>& tree_info) {
-                                                  port_.SendByValue(tree_info);
+                                              [this](TreeInfo<T> tree_info) {
+                                                  port_.SendByValue(std::move(tree_info));
                                               });
             auto current_tree_info = GetTreeInfo(*this);
             NodePtr b = d->parent;
@@ -354,8 +354,8 @@ namespace DSVisualization {
         void RotateRight(typename RedBlackTree<T>::Node* b) {
             PRINT_WHERE_AM_I();
             TreeInfoWrapper tree_info_wrapper({size_, root_.get(), {}},
-                                              [this](const TreeInfo<T>& tree_info) {
-                                                  port_.SendByValue(tree_info);
+                                              [this](TreeInfo<T> tree_info) {
+                                                  port_.SendByValue(std::move(tree_info));
                                               });
             auto current_tree_info = GetTreeInfo(*this);
             NodePtr d = b->parent;
